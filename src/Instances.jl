@@ -30,32 +30,19 @@ include("optimization/GA/linearRelaxation.jl")
 include("optimization/GA/lagrangianSubProblem.jl")
 include("optimization/gpuMCND/lagrangianSubProblem.jl")
 
-export abstractInstance, abstractInstanceMCND, cpuInstanceMCND, gpuInstanceMCND
-export labelsExtraction, featuresExtraction
-export prediction, target
-export inputSize
-export createLoss
-export ComputeGAP, ComputeGAPset
-export printOutResults
-export abstractInstanceFactory, MCNDinstanceFactory,cpuMCNDinstanceFactory,gpuMCNDinstanceFactory, CWLinstanceFactory,cpuCWLinstanceFactory, cpuInstanceCWL, instanceCWL
-export createExamplesFromInstance
-export createDataSet, dataLoader
-export createCorpus, createKfold
-export dictValuesToVector
-export featuresLoader
-export tail, head, capacity, fixed_cost, routing_cost, origin, destination, volume
-export sizeK, sizeV, sizeE, b, isInKij
-export outdegree, indegree
-export load_data
-export labelsLoader
-export cijk
-export checkDims
-export LR, value_LR_a, value_LR, constantLagrangianBound
-export create_model
-export pea_cor
+export abstractInstance,abstractInstanceFactory
+export instanceCWL,cpuInstanceCWL ,CWLinstanceFactory,cpuCWLinstanceFactory
+export instanceGA, cpuInstanceGA, GAinstanceFactory, cpuGAinstanceFactory
+export abstractInstanceMCND
+export gpuMCNDinstance, gpuMCNDinstanceFactory
+export cpuInstanceMCND, MCNDinstanceFactory, cpuMCNDinstanceFactory, modify_instance
+
 export objective_coefficient_type
-export dataLoader
-export create_data_object
-export CR
+export create_data_object, lengthLM, sizeLM, read_dat, print_dat,read_modify_dat
+export read_modify_dat, generate_GA
+export origin,destination, volume, routing_cost, tail, head, capacity, fixed_cost, sizeK, sizeV, sizeE, b, isInKij, outdegree, indegree, outdegree_k, indegree_k
+export LR, CR
+export cijk, constantLagrangianBound, value_LR, value_LR_a
+export solve_knapsack_continuous, solve_knapsack
 
 end
