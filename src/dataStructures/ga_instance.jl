@@ -138,7 +138,7 @@ function read_dat(path::String, _::cpuGAinstanceFactory)
 	end
 
 	close(f)
-	return LearningPi.cpuInstanceGA(I, J, p, w, c)
+	return cpuInstanceGA(I, J, p, w, c)
 end
 
 """
@@ -208,7 +208,7 @@ function read_modify_dat(path::String, factory::cpuGAinstanceFactory, seed = 1, 
 	p = round.(Int64, min.(max.(p, min_p), max_p))
 	w = round.(Int64, min.(max.(w, min_w), max_w))
 
-	return LearningPi.cpuInstanceGA(I, J, p, w, c)
+	return cpuInstanceGA(I, J, p, w, c)
 end
 
 """
@@ -246,7 +246,7 @@ function generate_GA(seed::Int, I::Int, J::Int)
 	p = round.(p)
 	c = round.(c)
 
-	return LearningPi.cpuInstanceGA(I, J, p, w, c)
+	return cpuInstanceGA(I, J, p, w, c)
 end
 
 
@@ -279,5 +279,5 @@ function generate_GA2(seed::Int, I::Int, J::Int)
 	p = max.(1, round.(-p .* 10))
 	c = ceil.(c)
 	
-	return LearningPi.cpuInstanceGA(I, J, p, w, c)
+	return cpuInstanceGA(I, J, p, w, c)
 end

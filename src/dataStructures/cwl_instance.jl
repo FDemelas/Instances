@@ -106,7 +106,7 @@ function read_dat(path::String, factory::cpuCWLinstanceFactory)
 		end
 	end
 	close(f)
-	return LearningPi.cpuInstanceCWL(I, J, c, fc, q, demands)
+	return cpuInstanceCWL(I, J, c, fc, q, demands)
 end
 
 """
@@ -198,5 +198,5 @@ function read_modify_dat(path::String, factory::cpuCWLinstanceFactory, seed = 1,
 
 	c = ĉ .* demands'
 
-	return LearningPi.cpuInstanceCWL(I, newJ, c[:, 1:newJ], fc / 100, q, demands[1:newJ])
+	return cpuInstanceCWL(I, newJ, c[:, 1:newJ], fc / 100, q, demands[1:newJ])
 end

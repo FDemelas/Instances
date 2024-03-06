@@ -92,7 +92,7 @@ function read_dat(path::String, factory::cpuMCNDinstanceFactory)
 		end
 	end
 	close(f)
-	return LearningPi.cpuInstanceMCND(n, edges, commodities, fc, r, c)
+	return cpuInstanceMCND(n, edges, commodities, fc, r, c)
 end
 
 """
@@ -128,7 +128,7 @@ function modify_instance(ins::cpuInstanceMCND, seed::Int64, x::Real)
 	#    f = shuffle(rng,ins.f) .+ floor.(0.1*mean(ins.f).*(rand(rng,size(ins.f)[1]).-0.5))
 	r = max.(1, floor.(mean(ins.r) .+ sqrt(var(ins.r)) .* (randn(rng, (K, sizeE(ins))))))
 
-	return LearningPi.cpuInstanceMCND(ins.n, ins.edges, commodities, ins.f, r, ins.c)
+	return cpuInstanceMCND(ins.n, ins.edges, commodities, ins.f, r, ins.c)
 end
 
 
