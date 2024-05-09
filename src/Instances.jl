@@ -3,11 +3,16 @@ module Instances
 const VERSION = "0.1.0"
 
 using JuMP 
-using HiGHS
+using HiGHS, Gurobi
 using LinearAlgebra
 using SparseArrays
 using Random
 using Statistics
+
+
+global CR_Optimiser = HiGHS.Optimizer
+
+global LR_Optimiser = Gurobi.Optimizer
 
 #assure the good CUDA version, for the cluster
 #CUDA.set_runtime_version!(v"11.4")
@@ -20,6 +25,7 @@ include("dataStructures/cwl_instance.jl")
 include("dataStructures/MCND_dataInstance.jl")
 include("dataStructures/mcnd_instance.jl")
 include("dataStructures/mcnd_instance_gpu.jl")
+include("dataStructures/UC_instance.jl")
 
 include("optimization/KnapsackSolver.jl")
 include("optimization/CWL/linearRelaxation.jl")
@@ -29,6 +35,8 @@ include("optimization/MCND/lagrangianSubProblem.jl")
 include("optimization/GA/linearRelaxation.jl")
 include("optimization/GA/lagrangianSubProblem.jl")
 include("optimization/gpuMCND/lagrangianSubProblem.jl")
+include("optimization/UC/linearRelaxation.jl")
+include("optimization/UC/lagrangianRelaxation.jl")
 
 export abstractInstance,abstractInstanceFactory
 export instanceCWL,cpuInstanceCWL ,CWLinstanceFactory,cpuCWLinstanceFactory

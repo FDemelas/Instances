@@ -29,7 +29,7 @@ function CR(ins::abstractInstanceMCND)
 	end
 
 
-	model = Model(HiGHS.Optimizer)
+	model = Model(CR_Optimiser)
 
 	@variable(model, min(ins.K[k][3], capacity(ins, ij)) >= x[k = 1:nK, ij = 1:nE] >= 0)
 
@@ -78,5 +78,5 @@ function CR(ins::abstractInstanceMCND)
 		yV[i] = value(y[i])
 		yRC[i] = reduced_cost(y[i])
 	end
-	return objective_value(model), -πV, μV, xV, yV, -πSP, μSP, xRC, yRC
+	return JuMP.objective_value(model), -πV, μV, xV, yV, -πSP, μSP, xRC, yRC
 end

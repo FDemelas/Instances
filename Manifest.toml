@@ -2,7 +2,7 @@
 
 julia_version = "1.9.4"
 manifest_format = "2.0"
-project_hash = "87fedbc63e12617d521fdaafc9207d442257bd22"
+project_hash = "e65b3e516801fee992b3b2105a8ed6031a01cf2e"
 
 [[deps.ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
@@ -107,6 +107,12 @@ version = "0.10.36"
     [deps.ForwardDiff.weakdeps]
     StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
+[[deps.Gurobi]]
+deps = ["LazyArtifacts", "Libdl", "MathOptInterface"]
+git-tree-sha1 = "41744ebbdc082c5ebc7582edbb779570a1595ca0"
+uuid = "2e9cd046-0924-5485-92f1-d5272153d98b"
+version = "1.2.3"
+
 [[deps.HiGHS]]
 deps = ["HiGHS_jll", "MathOptInterface", "PrecompileTools", "SparseArrays"]
 git-tree-sha1 = "f869b0a17d1a4f13aac08af8d0a050bdb70bccfd"
@@ -151,6 +157,10 @@ version = "1.20.0"
 
     [deps.JuMP.weakdeps]
     DimensionalData = "0703355e-b756-11e9-17c0-8b28908087d0"
+
+[[deps.LazyArtifacts]]
+deps = ["Artifacts", "Pkg"]
+uuid = "4af54fe1-eca0-43a8-85a7-787d91b784e3"
 
 [[deps.LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]

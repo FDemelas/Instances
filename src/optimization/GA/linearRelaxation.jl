@@ -10,7 +10,7 @@ function CR(ins::cpuInstanceGA)
 	I = ins.I
 	J = ins.J
 
-	model = Model(HiGHS.Optimizer)
+	model = Model(CR_Optimiser)
 
 	@variable(model, 1 >= x[1:I, 1:J] >= 0)
 
