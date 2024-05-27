@@ -1,35 +1,24 @@
 # Instances.jl
 
-```
-git clone https://depot.lipn.univ-paris13.fr/demelas/instances.jl.gitgit branch -M main
-```
+This package provides a complement of 
+
+https://github.com/FDemelas/Learning_Lagrangian_Multipliers.jl/tree/main
+
+Here we develop the encoding of the instances and the resolution of the Lagrangian Sub-Problem and the Continuous Relaxation.
 
 ## Getting started
 
-
-## Add your files
-
-Some instances can be found at: 
-
-## Test and Deploy
-
-***
-
-## Description
-
-## Installation
-
-## Usage
+%## Test and Deploy
+%***
+%## Description
+%## Installation
+%## Usage
+%## Support
 
 
-## Support
-
-
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+%## Contributing
+%State if you are open to contributions and what your requirements are for accepting them.
+%You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
 
 
 ## Authors and acknowledgment
