@@ -8,7 +8,7 @@ using LinearAlgebra
 using SparseArrays
 using Random
 using Statistics
-
+using Documenter
 
 global CR_Optimiser = HiGHS.Optimizer
 
