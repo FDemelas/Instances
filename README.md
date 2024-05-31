@@ -11,8 +11,16 @@ For the moment this package supports these problems:
 - Capacitated Warehouse Location Problem,
 - Unit Commitment Problem.
 
-For each problem, it is implemented only one Lagrangian Relaxation.
+## Documentation
+
 More specific information can be found in the corresponding documentation.
+To build the documentation you can use the following command from the main folder:
+
+```shell
+julia --project=docs/ docs/make.jl
+```
+
+and you will find it in the folder docs/build/ as html files.
 
 <!--
 ## Getting started
