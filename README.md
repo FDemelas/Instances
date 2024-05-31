@@ -5,6 +5,14 @@ This package provides a complement of
 https://github.com/FDemelas/Learning_Lagrangian_Multipliers.jl/tree/main
 
 Here we develop the encoding of the instances and the resolution of the Lagrangian Sub-Problem and the Continuous Relaxation.
+For the moment this package supports these problems:
+- Multi-Commodity Network Design,
+- Generalized Assignment,
+- Capacitated Warehouse Location Problem,
+- Unit Commitment Problem.
+
+For each problem, it is implemented only one Lagrangian Relaxation.
+More specific information can be found in the corresponding documentation.
 
 <!--
 ## Getting started
