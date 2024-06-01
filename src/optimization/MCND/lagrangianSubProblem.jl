@@ -1,7 +1,5 @@
 """
-	cijk(ins::instance, e, k, π)
-
-	# Arguments:
+# Arguments:
 
 	- `ins`: instance of the problem
 	- `e`: index of the edge
@@ -15,9 +13,7 @@ cijk(ins::cpuInstanceMCND, e, k, π) = isInKij(ins, k, e) ? routing_cost(ins, e,
 
 
 """
-	LR(ins, π, x, y, demands, e)
-
-	# Arguments:
+# Arguments:
 
 	- `ins`: cpuInstanceMCND of the problem
 	- `π`: a Lagrangian multipliers Vector
@@ -72,8 +68,6 @@ end
 
 
 """
-LR(ins::cpuInstanceMCND, π)
-
 # Arguments:
 
 - `ins`: cpuInstanceMCND of the problem
@@ -97,9 +91,7 @@ function LR(ins::cpuInstanceMCND, π)
 end
 
 """
-	constantLagrangianBound(ins::cpuInstanceMCND, π)
-
-	# Arguments:
+# Arguments:
 
 	- `ins`: cpuInstanceMCND of the problem
 	- `π`: a Lagrangian multipliers Vector
@@ -116,8 +108,6 @@ function constantLagrangianBound(ins::cpuInstanceMCND, π)
 end
 
 """
-value_L(ins::cpuInstanceMCND, π, x, y)
-
 # Arguments:
 
 	- `ins`: cpuInstanceMCND of the problem
@@ -130,9 +120,7 @@ using the lagrangian multipliers vector π and the primal solution (x,y).
 value_LR(ins::cpuInstanceMCND, π, x, y) = sum(value_LR_a(ins, ia, π, x, y) for ia ∈ 1:sizeE(ins)) - constantLagrangianBound(ins, π)
 
 """
-	value_L_a(ins, ia, π, x, y)
-	
-	# Arguments:
+# Arguments:
 
 	- `ins`: cpuInstanceMCND of the problem
 	- `ia`: index of the arc

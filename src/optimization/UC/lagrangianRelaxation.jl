@@ -1,11 +1,9 @@
 
 """
-CR(ins)
-
 # Arguments:
-- `ins`: an instance structure.
+- `ins`: an instance structure of type UC_instance.
 
-Solve the linear relaxation of the provided instance and then, it returns the objective value of the linear relaxation, the dual variables associated to flow constraints, the dual variables associated to capacity constraints, the primal flow variables and the primal design variables.
+Construct the Lagrangian Relaxation Sub-Problem for non-decomposed sub-problems.
 """
 function create_LR(ins::UC_instance)
 	T = ins.T
@@ -41,13 +39,14 @@ function create_LR(ins::UC_instance)
 end
 
 
+
 """
-CR(ins)
-
 # Arguments:
-- `ins`: an instance structure.
+- `ins`: an instance structure of type UC_instance.
+- `g`: the index of the generator associated to the sub-problem.
 
-Solve the linear relaxation of the provided instance and then, it returns the objective value of the linear relaxation, the dual variables associated to flow constraints, the dual variables associated to capacity constraints, the primal flow variables and the primal design variables.
+Construct the Lagrangian Relaxation Sub-Problem associated to a given generator `g` in the case
+of decomposable sub-problems.
 """
 function create_LR_component(ins::UC_instance,g::Int64)
 	T = ins.T
@@ -81,7 +80,16 @@ function create_LR_component(ins::UC_instance,g::Int64)
     return model
 end
 
-function modify_objective(ins,y1,y2)
+"""
+# Arguments:
+- `ins`: an instance structure of type `UC_instance`
+- `y1`: the dual variables vector associated to Power Demand Constraints
+- `y2`: the dual variables vector associated to Reserve Constraints
+
+For Undecomposed sub-problem.
+Modify the objective function of the Lagrangian Sub-Problem in the model constained in `ins` considering `y1` and `y2` as Lagrangian Mutlipliers vectors.
+"""
+function modify_objective(ins::UC_instance,y1::AbstractVector,y2::AbstractVector)
     if ins.model.is_decomposable
         modify_objectives(ins,y1,y2)
     else 
@@ -100,7 +108,16 @@ end
 
 
 
-function modify_objectives(ins,y1,y2)
+"""
+# Arguments:
+- `ins`: an instance structure of type `UC_instance`
+- `y1`: the dual variables vector associated to Power Demand Constraints
+- `y2`: the dual variables vector associated to Reserve Constraints
+
+For Decomposed sub-problem.
+Modify the objectives functions of the Lagrangian Sub-Problems in the model constained in `ins` considering `y1` and `y2` as Lagrangian Mutlipliers vectors.
+"""
+function modify_objectives(ins::UC_instance,y1::AbstractVector,y2::AbstractVector)
     for (g,component) in ins.model.decomposed
     @objective(component, Min, 
       LinearAlgebra.dot( ins.C_no_load[g] * ones(ins.T) , component[:α] )

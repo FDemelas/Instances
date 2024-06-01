@@ -4,8 +4,9 @@ Abstract type for every instance of the Capacitated Warehose Locaation Problem.
 abstract type instanceCWL <: abstractInstance end
 
 """
-Structure that describe a cpu instance of the Capacitated Warehose Locaation Problem.
-#Fields:
+Structure that describe a cpu instance of the Capacitated Warehose Location Problem.
+
+# Fields:
 -`I`: facilities number
 -`J`: custumers number
 -`c`: costs to satisfy the demand of a costumer with a certain facility 
@@ -34,12 +35,19 @@ struct cpuCWLinstanceFactory <: CWLinstanceFactory end
 
 """
 Given the data, creates an instance of the Bin Packing Problem.
+
+# Arguments:
+- `_`: factory
+- `I`: number of facilities
+- `J`: number of custumers
+-`c`: costs to satisfy the demand of a costumer with a certain facility 
+-`f`: costs for open facilities
+-`q`: capacity of the facilities
+-`d`: demands of the costumers
 """
-create_data_object(::cpuCWLinstanceFactory, I, J, c, f, q, d) = cpuInstanceCWL(I, J, c, f, q, d)
+create_data_object(::cpuCWLinstanceFactory, I::Int, J::Int, c::Matrix{Float32}, f::Vector{Float32}, q::Vector{Int64}, d::Vector{Int64}) = cpuInstanceCWL(I, J, c, f, q, d)
 
 """
-function lengthLM(ins::instanceCWL)
-	
 # Arguments:
 - `ins`: instance object, should be a sub-type of instanceCWL
 
@@ -50,8 +58,6 @@ function lengthLM(ins::instanceCWL)
 end
 
 """
-function sizeLM(ins::instanceCWL)
-
 # Arguments:
 - `ins`: instance object, should be a sub-type of instanceCWL
 
@@ -62,9 +68,7 @@ function sizeLM(ins::instanceCWL)
 end
 
 """
-function read_dat(path::String,factory::cpuCWLinstanceFactory)
-
-#Arguments:
+# Arguments:
 - `path` : a String that contains the path to the data file of the instance
 - `factory` : a cpuCWLinstanceFactory used only to construct an instance of the proper type ( . <: instanceCWL)
 
@@ -110,9 +114,7 @@ function read_dat(path::String, factory::cpuCWLinstanceFactory)
 end
 
 """
-function print_dat(path::String, ins::CWLinstance)
-
-	# Arguments:
+# Arguments:
 		- `path`: the path to the file where we want print the data
 		- `ins`: the instance object that we want print in a file, should be a sub-type of instanceCWL
 """
@@ -136,9 +138,7 @@ function print_dat(path::String, ins::instanceCWL)
 end
 
 """
-function read_modify_dat(path::String,factory::cpuCWLinstanceFactory,seed=1,α=0.75,newJ=100)
-
-#Arguments:
+# Arguments:
   - `path`: the path to the file .dat containing the information about the instance that we want modify
   - `factory`: the instance factory, supports cpuCWLinstanceFactory
   - `seed`: the random generation seed

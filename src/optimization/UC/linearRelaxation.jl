@@ -1,9 +1,7 @@
 
 """
-CR(ins)
-
 # Arguments:
-- `ins`: an instance structure.
+- `ins`: an instance structure of type UC_instance.
 
 Solve the linear relaxation of the provided instance and then, it returns the objective value of the linear relaxation, the dual variables associated to flow constraints, the dual variables associated to capacity constraints, the primal flow variables and the primal design variables.
 """

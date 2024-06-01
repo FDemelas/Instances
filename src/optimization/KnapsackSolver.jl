@@ -1,7 +1,5 @@
 """
-function solve_knapsack_continuous(n, c, w, C, x)
-
-	#Arguments:
+# Arguments:
 		- `n`: the number of objects 
 		- `c`: the costs vector of the objects
 		- `w`: the weights vector of the objects
@@ -45,9 +43,7 @@ function solve_knapsack_continuous(n, c, w, C, x)
 end
 
 """
-function solve_knapsack(n, c, w, C, x)
-
-	#Arguments:
+# Arguments:
 		- `n`: the number of objects 
 		- `c`: the costs vector of the objects
 		- `w`: the weights vector of the objects

@@ -1,6 +1,4 @@
 """
-CR(ins::cpuInstanceGA)
-
 # Arguments:
 - `ins`: a GA instance structure.
 

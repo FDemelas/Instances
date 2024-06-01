@@ -1,6 +1,4 @@
 """
-CR(ins)
-
 # Arguments:
 - `ins`: an instance structure.
 

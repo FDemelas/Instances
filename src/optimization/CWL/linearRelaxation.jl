@@ -1,8 +1,6 @@
 
 
 """
-CR(ins::cpuInstanceCWL)
-
 # Arguments:
 - `ins`: a CWL instance structure.
 

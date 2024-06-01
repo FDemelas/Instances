@@ -1,9 +1,8 @@
 """
-LR(ins::cpuInstanceCWL,π)
-
-#Arguments:
--`ins`: an instance structure of the Bin packing Problem
--`π`: a vector of Lagrangian Multipliers
+# Arguments:
+-`ins`: an instance structure of the Bin packing Problem,
+-`π`: a vector of Lagrangian Multipliers,
+- `unsplittable`: a boolean that say if true that is the unsplittable version of CWL where we have only binary variables.
 
 This function solves the Lagrangian Knapsack Sub-Problem for the provided instance using the provided Lagrangian multipliers vector. 
 """
