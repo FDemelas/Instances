@@ -25,6 +25,6 @@ makedocs(;
 
 
 deploydocs(;
-    repo = "https://github.com/FDemelas/Instances",
+    repo = "https://github.com/FDemelas/Instances.git",
     devbranch = "master"
 )
