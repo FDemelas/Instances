@@ -22,7 +22,9 @@ makedocs(;
     ]
 )
 
+
+
 deploydocs(;
     repo = "https://github.com/FDemelas/Instances",
-    devbranch = "main"
+    devbranch = "master"
 )
