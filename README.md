@@ -1,4 +1,7 @@
 # Instances.jl
+[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://fdemelas.github.io/Instances/dev/)
+[![Documentation](https://github.com/FDemelas/Instances/actions/workflows/documentation.yml/badge.svg?branch=master)](https://github.com/FDemelas/Instances/actions/workflows/documentation.yml)
+
 
 This package provides a complement of 
 
