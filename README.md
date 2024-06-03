@@ -1,6 +1,7 @@
 # Instances.jl
 [![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://fdemelas.github.io/Instances/dev/)
 [![Documentation](https://github.com/FDemelas/Instances/actions/workflows/documentation.yml/badge.svg?branch=master)](https://github.com/FDemelas/Instances/actions/workflows/documentation.yml)
+[![CC BY 4.0][cc-by-shield]][cc-by]
 
 
 This package provides a complement of 
@@ -14,20 +15,9 @@ For the moment this package supports these problems:
 - Capacitated Warehouse Location Problem,
 - Unit Commitment Problem.
 
-## Documentation
-
-More specific information can be found in the corresponding documentation.
-To build the documentation you can use the following command from the main folder:
-
-```shell
-julia --project=docs/ docs/make.jl
-```
-
-and you will find it in the folder docs/build/ as html files.
+More  information can be found in the corresponding documentation.
 
 ## License
-
-Shield: [![CC BY 4.0][cc-by-shield]][cc-by]
 
 This work is licensed under a
 [Creative Commons Attribution 4.0 International License][cc-by].
