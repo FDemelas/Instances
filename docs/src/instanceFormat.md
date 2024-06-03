@@ -50,11 +50,11 @@ all of the demand of j to warehouse i (i=1,...,m)
 # Unit Commitment
 
 Also for the Unit Commitment Problem the data format is the same of OR-lib [^2].
-
+First used and presented in [^3] and [^4]
 
 
 
 [^1]: Crainic, T. G., Frangioni, A., and Gendron, B. Bundle-based relaxation methods for multicommodity capacitated fixed charge network design. Discrete Applied Mathematics, 112(1-3):pp. 73–99, 2001.
 [^2]: http://people.brunel.ac.uk/~mastjjb/jeb/info.html
-[^4]: Frangioni, C. Gentile, F. Lacalandra 'Solving Unit Commitment Problems with General Ramp Contraints' International Journal of Electrical Power and Energy Systems, to appear, 2008
-[^5]: Frangioni, C. Gentile 'Solving Nonlinear Single-Unit Commitment Problems with Ramping Constraints' Operations Research 54(4), p. 767 - 775, 2006 These papers also describe in details the Unit Commitment model.
+[^3]: Frangioni, C. Gentile, F. Lacalandra 'Solving Unit Commitment Problems with General Ramp Contraints' International Journal of Electrical Power and Energy Systems, to appear, 2008
+[^4]: Frangioni, C. Gentile 'Solving Nonlinear Single-Unit Commitment Problems with Ramping Constraints' Operations Research 54(4), p. 767 - 775, 2006 These papers also describe in details the Unit Commitment model.
