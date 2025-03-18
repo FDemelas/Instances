@@ -229,7 +229,7 @@ function bundle_execution(
 		if inference
 			return ϕ(reshape(z_bar, sizeInputSpace(ϕ))), times
 		else
-			vγ = (γ > 0 ? γ * mean([γ^(B.maxIt + 1 - i) for i in (B.maxIt+1):-1:1] .* [ϕ(z) for z in eachcol(B.z[:, 1:B.maxIt+1])]) : 0)
+			vγ = (γ > 0 ? γ * mean([γ^(B.maxIt + 1 - i) for i in (B.maxIt+1):-1:1] .* [ϕ(reshape(z, sizeInputSpace(ϕ))) for z in eachcol(B.z[:, 1:B.maxIt+1])]) : 0)
 			vλ = (1 - λ) * ϕ(reshape(z_bar[:], sizeInputSpace(ϕ))) + (λ) * ϕ(reshape(z_new[:], sizeInputSpace(ϕ)))
 			return vγ + vλ
 		end
