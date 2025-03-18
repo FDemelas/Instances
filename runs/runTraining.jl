@@ -128,7 +128,7 @@ function main(args)
 
 	# take the input parameters and construct a Dictionary
 	parsed_args = parse_args(args, s)
-
+	
 	folder = parsed_args["data"]
 	lr = parsed_args["lr"]
 	decay = parsed_args["decay"]
