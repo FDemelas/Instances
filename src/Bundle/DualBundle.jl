@@ -3,18 +3,30 @@ Create the Dual Master Problem associated to the Bundle `B` using `t` as regular
 It is suggested to use this function only in the initialization and then consider to update the model instead of creating a new one.
 """
 function create_DQP(B::DualBundle, t::Float64)
+	# Create the (empty) model and assign Gurobi as Optimizer
 	model = Model(Gurobi.Optimizer)
 	set_optimizer_attribute(model, "NonConvex", 2)
+	# Use only one Thread for the resolution
 	set_attribute(model, "Threads", 1)
+	# Force to use the Primal Method (as it allows better re-optimization)
 	set_attribute(model, "Method", 0)
 
+	# Define the objective values for the quadratic part
 	g = 0 < B.params.max_β_size < Inf ? B.G[:, 1:B.size] : B.G
+
+	# Define the objective values for the linear part
 	α = 0 < B.params.max_β_size < Inf ? B.α[1:B.size] : B.α
 
+	# Define one variable for each bundle component
+	# Bound it in 0-1 as it should belong to the simplex
 	@variable(model, 1 >= θ[1:size_Bundle(B)[1]] >= 0)
 
+	# add Simplex constraint
 	@constraint(model, conv_comb, ones(size_Bundle(B)[1])' * θ == 1)
 
+	# Define the objective function as sum of the linear and the quadratic part
+	# Note that the regularization parameter `t` is considered as `1/t` in the linear part (instead of `t` in the quadratic part)
+	# as this allows faster re-optimization
 	if size(θ)[1] == 1
 		quadratic_part = @expression(model, LinearAlgebra.dot(g .* θ, g .* θ))
 		linear_part = @expression(model, LinearAlgebra.dot(α, θ))
@@ -22,8 +34,8 @@ function create_DQP(B::DualBundle, t::Float64)
 	else
 		@objective(model, Min, (1 / 2) * LinearAlgebra.dot(g * θ, g * θ) + 1 / t * LinearAlgebra.dot(α, θ))
 	end
+	# the model should not provide output in the standarrd output
 	set_silent(model)
-	set_time_limit_sec(model, 20.0)
 	return model
 end
 
@@ -33,14 +45,11 @@ Solve the Dual Master Problem and update the associated objective function.
 Note: the objective function is rescaled using the regularization parameter as it is scaled inversely in the Dual Master Problem formulation in order to allow faster re-optimization.
 """
 function solve_DQP(B::DualBundle)
+	#Solve the Dual Quadratic (Master) Problem
 	optimize!(B.model)
 
-	if dual_status(B.model) == NO_SOLUTION
-		return 0
-	end
-
+	#Compute the objective value and scale it back as the regularization parameter was considered as `1/t` in the linear part. 
 	B.objB = B.params.t * JuMP.objective_value(B.model)
-
 end
 
 """
@@ -52,19 +61,25 @@ If we add a new component, then we add the associated varibale to the problem, b
 If we changed the parameter t or the stabilization point we have to update all the linear part in the objective function.
 """
 function update_DQP!(B::DualBundle, t_change = true, s_change = true)
+	#Smart updates of the Dual Master Problem to improve reoptimization
 	if !(length(B.model.obj_dict[:θ]) == B.size)
+		# if we add new components to the bundle, then we have to add the associated variable to the Dual Master Problem
+		# and add them to the simplex constraint
 		for _ in 1:(size_Bundle(B)-length(B.model.obj_dict[:θ]))
 			θ_tmp = @variable(B.model, upper_bound = 1, lower_bound = 0)
 			set_normalized_coefficient(B.model.obj_dict[:conv_comb], θ_tmp, 1)
 			push!(B.model.obj_dict[:θ], θ_tmp)
 		end
+		# in this case we also need to add the quadratic objective associated to the new components
 		for tmp in 1:length(B.model.obj_dict[:θ])
 			set_objective_coefficient(B.model, B.model.obj_dict[:θ][B.li], B.model.obj_dict[:θ][tmp], (1 / 2) * B.Q[B.li, tmp])
 		end
 	end
 	if t_change || s_change
+		# if we change the t-parameter or the stabilization point (and so also the linearization errors)), then we need to rewrite the linear part in the objective function for all the variables
 		set_objective_coefficient(B.model, B.model.obj_dict[:θ], 1 / B.params.t * B.α[1:B.size])
 	else
+		#otherwhise we just need to change the objective value in the linear part for the last inserted component
 		set_objective_coefficient(B.model, B.model.obj_dict[:θ][B.li], 1 / B.params.t * B.α[B.li])
 	end
 end
@@ -111,6 +126,7 @@ Returns the linearization error associated to the point in the i-th position in 
 """
 function linearization_error(B::DualBundle, i::Int)
 	if i == B.s
+		# avoid computations: the linearization error for the stabilization point is zero
 		return 0
 	end
 	return linearization_error(B.G[:, i], zS(B), B.z[:, i], objS(B), B.obj[i])
@@ -127,7 +143,6 @@ end
 Updates all the linearization errors in the Bundle.
 """
 function update_linearization_errors(B::DualBundle)
-	B.α[B.s] = 0
 	for i in 1:size_Bundle(B)
 		B.α[i] = linearization_error(B, i)
 	end
@@ -217,12 +232,19 @@ Compute the new searching direction `B.w`, obtained as convex combination of the
 It also stock sever quantities that will be used in the condition that determinines if change the stailization point (i.e. make a Serious Step or a Null Step) and in the t-strategies.
 """
 function compute_direction(B::DualBundle)
+	# Obtain the solution of the Dual Master Problem. It is an element of the simplex for which each component denotes the weight for the associated bundle gradient
 	B.θ = value.(B.model.obj_dict[:θ])
+	# Add this solution into memory to allow removing outdated components
 	push!(B.cumulative_θ, copy(B.θ))
+	# Compute the new trial direction as convex combination of the gradients in the bundle
 	B.w = (0 < B.params.max_β_size < Inf) ? (B.G[:, 1:B.size] * B.θ) : (B.G * B.θ)
+	# Compute the value of the linear part (to be used in SS/NS decision and t-strategies)
 	B.linear_part = B.α[1:B.size]'B.θ
+	# Compute the value of the quadratic part (to be used in SS/NS decision and t-strategies)
 	B.quadratic_part = B.w'B.w
+	# Compute the Dual Master Problem objective value (to be used in SS/NS decision and t-strategies)
 	B.vStar = (B.params.t * B.quadratic_part + B.linear_part)
+	# Compute the Dual Master Problem objective value with a different (fixed) t, but keeping the sam solution (to be used in SS/NS decision and t-strategies)
 	B.ϵ = B.linear_part + B.params.t_star * B.quadratic_part / 2
 end
 
@@ -231,38 +253,54 @@ Updates the Bundle information.
 It adds to the bundle the information associated to the stabilization point `z`, knowing that the objective value in this point is `obj` and the sub-gradient is `g`.
 """
 function update_Bundle(B::DualBundle, z, g, obj)
+	# reshape the new trial point as a vector
 	z = reshape(z, :)
+	# and also the associated gradient
 	g = Float32.(reshape(g, :))
+
 	already_exists = false
 	for j in 1:B.size
-		#println(sum(abs.(B.G[:, j] - g))) 
+		#check if the new gradient already exists in the gradient matrix
 		if (sum(abs.(B.G[:, j] - g)) < 1.0e-8)
-			#println("already exists bundle size $(B.size) obj $(obj)")
 			already_exists = true
-			#if B.obj[j] < obj
+			# if it already exists we does not need to add it, 
+			# we can just update the associated linearization error, the objective value and the new point
 			B.α[j] = linearization_error(g, zS(B), z, objS(B), obj)
 			B.obj[j] = obj
 			B.z[:, j] = z
-			#end
+
+			# update the parameter to denote the last inserted components to denote that component
+			# Note: it is not mandatory the last one
 			B.li = j
+
+			#Add the objective value to the vector memorizing all the objective values
 			push!(B.all_objs, obj)
+			# in this case the update finish here
 			return
 		end
 
 	end
 
+	# if the component is actually a "new one", in the sense that the associated sub-gradient is "new"
 	if !(already_exists)
+		# two different implementations are proposed the first one use values of fixed-size for the fields of b
+		# the second one of variable sizes
 		if 0 < B.params.max_β_size < Inf
-			q = B.G[:, 1:B.size]' * g
 			i = B.size + 1
+			# add the new objective, the new point, the new gradent and the linearization error
 			B.obj[i] = obj
 			B.z[:, i] = z
 			B.G[:, i] = g
+			B.α[i] = linearization_error(B, i)
+
+			# upated the matrix Q=G'G
+			q = B.G[:, 1:B.size]' * g
 			B.Q[1:i-1, i] = q
 			B.Q[1, 1:i-1] = q
 			B.Q[i, i] = g'g
-			B.α[i] = linearization_error(B, i)
 		else
+			# upated the matrix Q=G'G
+			# and add the new objective, the new point, the new gradent and the linearization error
 			B.z = hcat(B.z, z)
 			q = B.G' * g
 			B.G = hcat(B.G, g)
@@ -271,8 +309,11 @@ function update_Bundle(B::DualBundle, z, g, obj)
 			α = linearization_error(B, size_Bundle(B) + 1)
 			push!(B.α, α)
 		end
+		# set the correct index for the last inserted index
 		B.li = B.size + 1
+		# add the objective value to the vector that memorize the objective values at all the iterations
 		push!(B.all_objs, obj)
+		# increment the bundle size
 		B.size += 1
 	end
 end
@@ -299,40 +340,47 @@ It has two additional input parameters:
 - `t_strat`: the t-Strategy, by default it is the contant t-strategy (i.e. the regularization parameter for the Dual Master Problem is always keeped fixed).
 - `unstable`: if `true` we always change the stabilization point using the last visited point, by default `false` (change it only if you know what you are doing).
 """
-function solve!(B::DualBundle, ϕ::AbstractConcaveFunction; t_strat::abstract_t_strategy = constant_t_strategy(), unstable::Bool = false)
+function solve!(B::DualBundle, ϕ::AbstractConcaveFunction; t_strat::abstract_t_strategy = constant_t_strategy(), unstable::Bool = false, force_maxIt::Bool = true)
 	times = Dict("times" => [], "trial point" => [], "ϕ" => [], "update β" => [], "SS/NS" => [], "update DQP" => [], "solve DQP" => [], "remove outdated" => [])
 	t0 = time()
 	for epoch in 1:B.params.maxIt
 		t1 = time()
-		z = trial_point(B)#reshape(, sizeInputSpace(ϕ)) 
+
+		# compute the new trial point
+		z = trial_point(B)
 		append!(times["trial point"], (time() - t1))
 
 		t0 = time()
+		# compute the objective value and sub-gradient in the new trial-point
 		obj, g = value_gradient(ϕ, z) # to optimize
 		append!(times["ϕ"], (time() - t0))
 
 		t0 = time()
-		s = B.s
+		# update the bundle with the new information
 		update_Bundle(B, z, g, obj)
 
+		# memorize the new regularization parameter
 		t = B.params.t
+		# memorize the current stabilization point
+		s = B.s
+		# update the regularization parameter and the stabilization point
 		t_strategy(B, B.li, t_strat, unstable)
 		append!(times["update β"], (time() - t0))
 
 		t0 = time()
+		#update the Dual Master Problem
 		update_DQP!(B, t == B.params.t, s == B.s)
 		append!(times["update DQP"], (time() - t0))
 
 		t0 = time()
+		#solve the Dual Master Problem
 		solve_DQP(B) # to optimize
 		append!(times["solve DQP"], (time() - t0))
 
+		# Update the Dual Master problem solution and compute the new trial direction
 		compute_direction(B)
 
-		if B.params.log
-			println("  $(objS(B)-obj <= B.objB) : $(objS(B)) - $(obj) = $(objS(B) - obj) $((objS(B)-obj <= B.objB) ? "<=" : ">") $(B.objB)  epoch number ", epoch, " optimal LR: ", objS(B), "  Bundle Size", size_Bundle(B)[1], " step t ", B.params.t)
-		end
-
+		# remove outdated components, i.e. bundle components that are not used for many iterations
 		t0 = time()
 		if epoch >= B.params.remotionStep
 			#remove_outdated(B)
@@ -340,10 +388,13 @@ function solve!(B::DualBundle, ϕ::AbstractConcaveFunction; t_strat::abstract_t_
 		append!(times["remove outdated"], (time() - t0))
 
 		append!(B.ts, B.params.t)
-		#if stopping_criteria(B)
-		#	println("Satisfied stopping criteria")
-		#	return true, times
-		#end
+		# check the stopping criteria and if it is satisfied stop the execution
+		# if force_maxIt is true than we force the algorithm to attain the maximum iterations
+		# and no further stopping criteria is considered 
+		if !(force_maxIt) && stopping_criteria(B)
+			println("Satisfied stopping criteria")
+			return true, times
+		end
 		push!(B.memorized["times"], time() - t1)
 	end
 	times["times"] = B.memorized["times"]
@@ -353,16 +404,23 @@ end
 """
 Function that handle is keep or change the stabilization point and then handle the increases or decreases of the regularization parameter.
 """
-function t_strategy(B::DualBundle, i::Int, ts::abstract_t_strategy, unstable::Bool=false)
+function t_strategy(B::DualBundle, i::Int, ts::abstract_t_strategy, unstable::Bool = false)
+	# if the new objective improve `enough` the one in the stabilization point
 	if B.obj[i] - objS(B) >= B.params.m1 * B.vStar || unstable
+		# update the consecutive  SS and NS counters
 		B.CSS += 1
 		B.CNS = 0
+		# change the stabilization point
 		B.s = i
+		# update the linearization error consequently
 		update_linearization_errors(B)
+		# call the t-strategy that decide if change the parameter t
 		increment_t(B, ts)
 	else
+		# update the consecutive  SS and NS counters
 		B.CNS += 1
 		B.CSS = 0
+		# call the t-strategy that decide if change the parameter t
 		decrement_t(B, ts)
 	end
 end
