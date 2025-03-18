@@ -34,7 +34,7 @@ function main(args)
 	@add_arg_table! s begin
 		"--data"
 		arg_type = String
-		default = "./data/MCNDfull/"
+		default = "./data/MCNDforTest/"
 		help = "optimizer for the training"
 		"--lr"
 		required = true

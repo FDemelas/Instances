@@ -16,7 +16,7 @@ function main(args)
 	@add_arg_table! s begin
 		"--folder"
 		arg_type = String
-		default = "./data/MCNDfull/"
+		default = "./data/MCNDforTest/"
 		help = "data path"
 		"--maxIterBundle"
 		arg_type = Int64
@@ -55,7 +55,7 @@ function main(args)
 	res = Dict(m[1] => Dict(t => Dict(i => Dict() for i in directory) for t in TS) for m in opts)
 	
 
-	f = JSON.open("./golds/MCNDfull/gold.json", "r")
+	f = JSON.open("./golds/MCNDforTest/gold.json", "r")
 	golds = JSON.parse(f)
 	close(f)
 

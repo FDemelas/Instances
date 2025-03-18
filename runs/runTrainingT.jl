@@ -321,7 +321,7 @@ function main(args)
 		help = "When true the gold labels should be provided to print the GAP in the Tensorboard Plots."
 		"--gold_location"
 		arg_type = String
-		default = "../golds/MCNDfull/gold.json"
+		default = "../golds/MCNDforTest/gold.json"
 		help = "Location of the gold labels."
 		"--instance_features"
 		arg_type = Bool
