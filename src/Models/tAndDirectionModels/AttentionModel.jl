@@ -148,9 +148,8 @@ function size_features(lt::AttentionModelFactory)
 end
 
 mutable struct AttentionModel <: AbstractModel
-	encoder_t::Any
+	encoder::Any
 	decoder_t::Any
-	encoder_γ::Any
 	decoder_γk::Any
 	decoder_γq::Any
 	rng::Any
@@ -172,8 +171,7 @@ Note it needs not only the model `m::AttentionModel`, but also two additional pa
 In practice `bs` should be exactly the batch-size (by default `1`), while `it` can be also grater than the maximum number of iterations (by default `500`).
 """
 function reset!(m::AttentionModel, bs::Int = 1, it::Int = 500)
-	Flux.reset!(m.encoder_t)
-	Flux.reset!(m.encoder_γ)
+	Flux.reset!(m.encoder)
 	Flux.reset!(m.decoder_t)
 	Flux.reset!(m.decoder_γk)
 	Flux.reset!(m.decoder_γq)
@@ -193,18 +191,18 @@ function reset!(m::AttentionModel, bs::Int = 1, it::Int = 500)
 end
 
 function (m::AttentionModel)(xt, xγ)
-	h = m.encoder_t(xt)
+	x=vcat(xt, xγ)
 
-	μ, σ2 = Flux.MLUtils.chunk(m.decoder_t(h), 2, dims = 1)
+	h = m.encoder(x)
+	μ,σ2,μ_hki, σ_hki, μ_hqi, σ_hqi = Flux.MLUtils.chunk(h, 6, dims = 1)
+
 	σ2 = 2.0f0 .- softplus.(2.0f0 .- σ2)
 	σ2 = -6.0f0 .+ softplus.(σ2 .+ 6.0f0)
 	σ2 = exp.(σ2)
 	sigma = sqrt.(σ2 .+ 1)
 	ϵ = randn(m.rng, Float32, size(μ))
 
-	t = m.sample_t ? abs.(μ .+ ϵ .* sigma) : abs.(μ)
-
-	μ_hki, σ_hki, μ_hqi, σ_hqi = Flux.MLUtils.chunk(m.encoder_γ(xγ), 4, dims = 1)
+	t = m.decoder_t( m.sample_t ? μ .+ ϵ .* sigma : μ)
 
 	ϵk = device(randn(m.rng, Float32, size(μ_hki)))
 	ϵq = device(randn(m.rng, Float32, size(μ_hqi)))
@@ -244,14 +242,12 @@ function create_NN(lt::AttentionModelFactory; h_act = gelu, h_representation::In
 	f_norm(x) = norm ? Flux.normalise(x) : identity(x)
 	rng = MersenneTwister(seed)
 	init = Flux.truncated_normal(Flux.MersenneTwister(seed); mean = 0.0, std = 0.01)
-	encoder_t = Chain(f_norm, LSTM(size_features(lt) => h_representation))
+	encoder = Chain(f_norm, LSTM(size_features(lt)+size_comp_features(lt) => 6*h_representation))
 
 	i_decoder_layer = Dense(h_representation => h_decoder[1], h_act; init)
 	h_decoder_layers = [Dense(h_decoder[i] => h_decoder[i+1], h_act; init) for i in 1:length(h_decoder)-1]
 	o_decoder_layers = Dense(h_decoder[end] => 2; init)
 	decoder_t = Chain(i_decoder_layer, h_decoder_layers..., o_decoder_layers)
-
-	encoder_γ = Chain(f_norm, LSTM(size_comp_features(lt) => 4 * h_representation))
 
 	i_decoder_layer = Dense(h_representation => h_decoder[1], h_act; init)
 	h_decoder_layers = [Dense(h_decoder[i] => h_decoder[i+1], h_act; init) for i in 1:length(h_decoder)-1]
@@ -263,7 +259,7 @@ function create_NN(lt::AttentionModelFactory; h_act = gelu, h_representation::In
 	o_decoder_layers = Dense(h_decoder[end] => h_representation; init)
 	decoder_γk = Chain(i_decoder_layer, h_decoder_layers..., o_decoder_layers)
 
-	model = AttentionModel(device(encoder_t), device(decoder_t), device(encoder_γ), device(decoder_γk), device(decoder_γq), rng, sampling_t, sampling_θ, device([]), device([]), device([]), device([]), 1.0, log_trick, h_representation, 1)
+	model = AttentionModel(device(encoder), device(decoder_t), device(decoder_γk), device(decoder_γq), rng, sampling_t, sampling_θ, device([]), device([]), device([]), device([]), 1.0, log_trick, h_representation, 1)
 	return model
 end
 
