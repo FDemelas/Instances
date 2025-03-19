@@ -1,7 +1,9 @@
 """
 Factory used to create
 """
-struct AttentionModelFactory <: AbstractDirectionAndTModelFactory end
+struct AttentionModelFactory <: AbstractDirectionAndTModelFactory 
+
+end
 
 """
 Create the features vector for a model of type `AttentionModelFactory` using the informations contained in the bundle `B`.
@@ -17,6 +19,11 @@ function create_features(lt::AttentionModelFactory, B::SoftBundle; auxiliary = 0
 	lp = sum(α[1:length(θ)]' * θ)
 	qp = sum(B.w' * B.w)
 
+	zz=B.z[:,:]' * B.z[:,B.li]
+	zsz=B.z[:,:]' * B.z[:,B.s]
+	gg=B.G[:,:]' * B.G[:,B.li]
+	gsg=B.G[:,:]' * B.G[:,B.s]
+	
 	ϕ = Float32[t,
 		qp,
 		t*qp,
@@ -29,30 +36,30 @@ function create_features(lt::AttentionModelFactory, B::SoftBundle; auxiliary = 0
 		B.li,
 		α[B.s],
 		α[B.li],
-		sum(sqrt(B.z[s:e, B.li]' * B.z[s:e, B.li]) / 2),
-		sum(sqrt(B.z[s:e, B.s]' * B.z[s:e, B.s]) / 2),
-		sum(sqrt(B.G[s:e, B.s]' * B.G[s:e, B.s]) / 2),
-		sum(sqrt(B.G[s:e, B.li]' * B.G[s:e, B.li]) / 2),
+		sum(sqrt(zz[B.li]) / 2),
+		sum(sqrt(zsz[B.s]) / 2),
+		sum(sqrt(gsg[B.s]) / 2),
+		sum(sqrt(gg[B.li]) / 2),
 	]
 
-	ϕγ = Float32[mean(B.G[s:e, B.li]),
-		mean(B.z[s:e, B.li]),
-		std(B.G[s:e, B.li]),
-		std(B.z[s:e, B.li]),
-		minimum(B.G[s:e, B.li]),
-		minimum(B.z[s:e, B.li]),
-		maximum(B.G[s:e, B.li]),
-		maximum(B.z[s:e, B.li]),
-		minimum(B.z[s:e, B.li]' * B.z[s:e, j] for j in 1:B.li),
-		minimum(B.z[s:e, B.s]' * B.z[s:e, j] for j in 1:B.li),
-		minimum(B.G[s:e, B.s]' * B.G[s:e, j] for j in 1:B.li),
-		minimum(B.G[s:e, B.li]' * B.G[s:e, j] for j in 1:B.li),
-		B.G[s:e, B.li]'*B.w[s:e],
-		maximum(B.z[s:e, B.li]' * B.z[s:e, j] for j in 1:B.li),
-		maximum(B.z[s:e, B.s]' * B.z[s:e, j] for j in 1:B.li),
-		maximum(B.G[s:e, B.s]' * B.G[s:e, j] for j in 1:B.li),
-		maximum(B.G[s:e, B.li]' * B.G[s:e, j] for j in 1:B.li),
-		B.G[s:e, B.s]'*B.w[s:e],
+	ϕγ = Float32[mean(B.G[:, B.li]),
+		mean(B.z[:, B.li]),
+		std(B.G[:, B.li]),
+		std(B.z[:, B.li]),
+		minimum(B.G[:, B.li]),
+		minimum(B.z[:, B.li]),
+		maximum(B.G[:, B.li]),
+		maximum(B.z[:, B.li]),
+		minimum(zz),
+		minimum(zsz),
+		minimum(gsg),
+		minimum(gg),
+		B.G[:, B.li]'*B.w,
+		maximum(zz),
+		maximum(zsz),
+		maximum(gsg),
+		maximum(gg),
+		B.G[:, B.s]'*B.w,
 		α[B.li],
 		obj[B.li]]
 	return device(ϕ), device(ϕγ)
@@ -148,21 +155,21 @@ function size_features(lt::AttentionModelFactory)
 end
 
 mutable struct AttentionModel <: AbstractModel
-	encoder::Any
-	decoder_t::Any
-	decoder_γk::Any
-	decoder_γq::Any
-	rng::Any
-	sample_t::Bool
-	sample_γ::Bool
-	Ks::Any
-	μs::Any
-	σs::Any
-	ϵs::Any
-	rescaling_factor::Int64
-	log_trick::Bool
-	h_representation::Int64
-	it::Int64
+	encoder::Any # model to encode mean and variance to sample hidden representations
+	decoder_t::Any # decode t from hidden representation
+	decoder_γk::Any# decode keys from hidden representation
+	decoder_γq::Any# decode query from hidden representation
+	rng::Any #random number generator
+	sample_t::Bool # if true sample hidden representation of t, otherwhise take the mean (i.e. no sampling)
+	sample_γ::Bool# if true sample hidden representation of keys and queries, otherwhise take the mean (i.e. no sampling)
+	Ks::Any # matrix og keys
+	μs::Any # random normal matrix that stock the means of keys and queries before the sampling. Useful only if log_trick is true 
+	σs::Any # random normal matrix that stock the variances of keys and queries before the sampling. Useful only if log_trick is true 
+	ϵs::Any # random normal matrix that stock the random part of the sampling. Useful only if log_trick is true
+	rescaling_factor::Int64 # rescaling_factor for the output γs (unused for the moment)
+	log_trick::Bool # if true use the log_trick regularization. Note: for the moment it is not implemented
+	h_representation::Int64 # size of hidden representations
+	it::Int64 # iteration counter
 end
 
 """
@@ -171,12 +178,15 @@ Note it needs not only the model `m::AttentionModel`, but also two additional pa
 In practice `bs` should be exactly the batch-size (by default `1`), while `it` can be also grater than the maximum number of iterations (by default `500`).
 """
 function reset!(m::AttentionModel, bs::Int = 1, it::Int = 500)
+	# reset the model component to forgot history in RNN
 	Flux.reset!(m.encoder)
 	Flux.reset!(m.decoder_t)
 	Flux.reset!(m.decoder_γk)
 	Flux.reset!(m.decoder_γq)
 
+	# reinitialization of the keys matrix
 	m.Ks = Zygote.bufferfrom(device(zeros(Float32, bs * m.h_representation, it)))#[]
+	# if log_tricks is true reinitialize the matrix used to store random part, mean and variance of keys and queries
 	if m.log_trick
 		m.μs = Zygote.bufferfrom(device(zeros(Float32, 2 * m.h_representation * bs, it)))#[]
 		m.σs = Zygote.bufferfrom(device(zeros(Float32, 2 * m.h_representation * bs, it)))#[]
@@ -186,83 +196,120 @@ function reset!(m::AttentionModel, bs::Int = 1, it::Int = 500)
 		m.σs = []
 		m.ϵs = []
 	end
-
+	# reset iteration counter to 1
 	m.it = 1
 end
 
+"""
+Forward computation of an `AttentionModel`. The Backward is made by automatic differentiation.
+The inputs are:
+- `xt`: features of t;
+- `xγ`: features of the bundle component.
+"""
 function (m::AttentionModel)(xt, xγ)
+	# append the features for t and for γs
 	x=vcat(xt, xγ)
 
+	# encode the full hidden representation
 	h = m.encoder(x)
+	# divide the hidden representation in mean and variance for t,the query and the key
 	μ,σ2,μ_hki, σ_hki, μ_hqi, σ_hqi = Flux.MLUtils.chunk(h, 6, dims = 1)
 
+	#construct the values to sample the hidden representation of t 
 	σ2 = 2.0f0 .- softplus.(2.0f0 .- σ2)
 	σ2 = -6.0f0 .+ softplus.(σ2 .+ 6.0f0)
 	σ2 = exp.(σ2)
 	sigma = sqrt.(σ2 .+ 1)
 	ϵ = randn(m.rng, Float32, size(μ))
 
+	# sample the hidden representation of t and then give it as input to the decoder to compute t
 	t = m.decoder_t( m.sample_t ? μ .+ ϵ .* sigma : μ)
 
+	# create the random component for the sample of the key
 	ϵk = device(randn(m.rng, Float32, size(μ_hki)))
+
+	# create the random component for the sample of the query
 	ϵq = device(randn(m.rng, Float32, size(μ_hqi)))
 
-
+	# create the variances for the sample of the key
 	σ2 = 2.0f0 .- softplus.(2.0f0 .- σ_hqi)
 	σ2 = -6.0f0 .+ softplus.(σ2 .+ 6.0f0)
 	σ2 = exp.(σ2)
 	σ_hqi = sqrt.(σ2 .+ 1)
 
+	# create the variances for the sample of the query
 	σ2 = 2.0f0 .- softplus.(2.0f0 .- σ_hki)
 	σ2 = -6.0f0 .+ softplus.(σ2 .+ 6.0f0)
 	σ2 = exp.(σ2)
 	σ_hki = sqrt.(σ2 .+ 1)
 
+	# sample the hidden representation of the key and the query
 	hki = m.decoder_γk(m.sample_γ ? μ_hki + ϵk .* σ_hki : μ_hki)
 	hqi = m.decoder_γq(m.sample_γ ? μ_hqi + ϵq .* σ_hqi : μ_hqi)
 
+	# add the current hidden representation of the key to the matrix that store all the hidden representations
 	m.Ks[:, m.it] = reshape(hki, :)
 
+	# if log_trick is true than store additional informations
 	if m.log_trick
 		m.μs[:, m.it] = vcat(μ_hki, μ_hqi)
 		m.ϵs[:, m.it] = vcat(ϵk, ϵq)
 		m.σs[:, m.it] = vcat(σ_hki, σ_hqi)
 	end
+
+	# compute the output to predict the new convex combination (after using it as input to a distribution function as softmax or sparsemax)
 	aq = device(size(hqi, 2) > 1 ? Flux.MLUtils.chunk(hqi, size(hqi, 2); dims = 2) : [hqi])
 	ak = (Flux.MLUtils.chunk(m.Ks[:, 1:m.it], Int64(size(m.Ks, 1) / m.h_representation); dims = 1))
-
-	θg = vcat(map((x, y) -> sum(x'y; dims = 1), aq, ak)...)
+	γs = vcat(map((x, y) -> sum(x'y; dims = 1), aq, ak)...)
+	
+	#increases the iteration counter
 	m.it = m.it + 1
-	return t, θg
+	return t, γs
 end
 
+# define `AttentionModel` as a Flux layer
 Flux.@layer AttentionModel
 
-function create_NN(lt::AttentionModelFactory; h_act = gelu, h_representation::Int = 32, h_decoder::Vector{Int} = [h_representation * 8], seed::Int = 1, norm::Bool = false, sampling_t::Bool = false, sampling_θ::Bool = true, log_trick::Bool = false)
+"""
+Function to create an `AttentionModel` given its hyper-parameters.
+"""
+function create_NN(lt::AttentionModelFactory; h_act = gelu, h_representation::Int = 32, h_decoder::Vector{Int} = [h_representation * 8], seed::Int = 1, norm::Bool = false, sampling_t::Bool = false, sampling_θ::Bool = true, log_trick::Bool = false,ot_act=softplus)
+	# possibly a normalization function, but is `norm` is false, then it is the identity
 	f_norm(x) = norm ? Flux.normalise(x) : identity(x)
+
+	#construct layer initilizer (for layer parameters)
 	rng = MersenneTwister(seed)
 	init = Flux.truncated_normal(Flux.MersenneTwister(seed); mean = 0.0, std = 0.01)
+
+	#the encoder used to predict the hidden space, given the features of the current iteration,
 	encoder = Chain(f_norm, LSTM(size_features(lt)+size_comp_features(lt) => 6*h_representation))
 
+	# construct the decoder that predicts `t` from its hidden representation
 	i_decoder_layer = Dense(h_representation => h_decoder[1], h_act; init)
 	h_decoder_layers = [Dense(h_decoder[i] => h_decoder[i+1], h_act; init) for i in 1:length(h_decoder)-1]
-	o_decoder_layers = Dense(h_decoder[end] => 2; init)
+	o_decoder_layers = Dense(h_decoder[end] => 2,ot_act; init)
 	decoder_t = Chain(i_decoder_layer, h_decoder_layers..., o_decoder_layers)
 
+	# construct the decoder that predicts the query from its hidden representation
 	i_decoder_layer = Dense(h_representation => h_decoder[1], h_act; init)
 	h_decoder_layers = [Dense(h_decoder[i] => h_decoder[i+1], h_act; init) for i in 1:length(h_decoder)-1]
 	o_decoder_layers = Dense(h_decoder[end] => h_representation; init)
 	decoder_γq = Chain(i_decoder_layer, h_decoder_layers..., o_decoder_layers)
 
+	# construct the decoder that predicts the key from its hidden representation
 	i_decoder_layer = Dense(h_representation => h_decoder[1], h_act; init)
 	h_decoder_layers = [Dense(h_decoder[i] => h_decoder[i+1], h_act; init) for i in 1:length(h_decoder)-1]
 	o_decoder_layers = Dense(h_decoder[end] => h_representation; init)
 	decoder_γk = Chain(i_decoder_layer, h_decoder_layers..., o_decoder_layers)
 
+	#put all together to construct an `AttentionModel`
 	model = AttentionModel(device(encoder), device(decoder_t), device(decoder_γk), device(decoder_γq), rng, sampling_t, sampling_θ, device([]), device([]), device([]), device([]), 1.0, log_trick, h_representation, 1)
 	return model
 end
 
+"""SoftBundle
+Size of the hidden representation of an `AttentionModel`.
+"""
 function h_representation(nn::AttentionModel)
 	return Int64(size(nn.decoder_t[1].weight, 2))
 end
