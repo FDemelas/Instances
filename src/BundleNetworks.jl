@@ -42,7 +42,6 @@ include("Bundle/BatchedSoftBundle.jl")
 
 include("Models/tAndDirectionModels/AttentionModel.jl")
 
-include("Models/tModels/tParallelRecurrentMlp.jl")
 include("Models/tModels/tRecurrentMlp.jl")
 
 include("Bundle/DualBundle.jl")
