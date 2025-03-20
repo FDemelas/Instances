@@ -138,8 +138,7 @@ function create_NN(lt::RnnTModelfactory,recurrent_layer=GRUv3, h_decoder::Vector
 	# normalize or not the input
 	f_norm(x) = norm ? Flux.normalise(x) : identity(x)
 
-	# random number genera
-	nn.encoder_γ = gpu(nn.encoder_γ)tor and model parameter initializer
+	# random number generator and model parameter initializer
 	rng = MersenneTwister(seed)
 	init = Flux.truncated_normal(Flux.MersenneTwister(seed); mean = 0.0, std = 0.01)
 
