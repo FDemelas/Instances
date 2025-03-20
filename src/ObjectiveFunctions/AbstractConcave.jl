@@ -28,7 +28,7 @@ In this case you will have to override this backward pass for `value_gradient`, 
 """
 function ChainRulesCore.rrule(f::typeof(value_gradient),ϕ::AbstractConcaveFunction,z::AbstractArray)
     value, grad = Flux.withgradient((x)->ϕ(x),z)
-    grad=device(Float32.(reshape(grad[1],size(z))))#Float32.(reshape(grad[1],:)))
+    grad=device(Float32.(reshape(grad[1],size(z))))
 	function loss_pullback(dl)
         dl1,dl2=Flux.MLUtils.chunk(dl,2)
         return (NoTangent(), NoTangent(),  grad * device(Float32.(dl1))')
