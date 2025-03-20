@@ -1,7 +1,7 @@
 """
 Factory used to create
 """
-struct AttentionModelFactory <: AbstractDirectionAndTModelFactory 
+struct AttentionModelFactory <: AbstractDirectionAndTModelFactory
 
 end
 
@@ -19,11 +19,11 @@ function create_features(lt::AttentionModelFactory, B::SoftBundle; auxiliary = 0
 	lp = sum(α[1:length(θ)]' * θ)
 	qp = sum(B.w' * B.w)
 
-	zz=B.z[:,:]' * B.z[:,B.li]
-	zsz=B.z[:,:]' * B.z[:,B.s]
-	gg=B.G[:,:]' * B.G[:,B.li]
-	gsg=B.G[:,:]' * B.G[:,B.s]
-	
+	zz = cpu(B.z[:, :]' * B.z[:, B.li])
+	zsz = cpu(B.z[:, :]' * B.z[:, B.s])
+	gg = cpu(B.G[:, :]' * B.G[:, B.li])
+	gsg = cpu(B.G[:, :]' * B.G[:, B.s])
+
 	ϕ = Float32[t,
 		qp,
 		t*qp,
@@ -206,14 +206,14 @@ The inputs are:
 - `xt`: features of t;
 - `xγ`: features of the bundle component.
 """
-function (m::AttentionModel)(xt, xγ)
+function (m::AttentionModel)(xt, xγ, idx = m.it)
 	# append the features for t and for γs
-	x=vcat(xt, xγ)
+	x = vcat(xt, xγ)
 
 	# encode the full hidden representation
 	h = m.encoder(x)
 	# divide the hidden representation in mean and variance for t,the query and the key
-	μ,σ2,μ_hki, σ_hki, μ_hqi, σ_hqi = Flux.MLUtils.chunk(h, 6, dims = 1)
+	μ, σ2, μ_hki, σ_hki, μ_hqi, σ_hqi = Flux.MLUtils.chunk(h, 6, dims = 1)
 
 	#construct the values to sample the hidden representation of t 
 	σ2 = 2.0f0 .- softplus.(2.0f0 .- σ2)
@@ -223,7 +223,7 @@ function (m::AttentionModel)(xt, xγ)
 	ϵ = randn(m.rng, Float32, size(μ))
 
 	# sample the hidden representation of t and then give it as input to the decoder to compute t
-	t = m.decoder_t( m.sample_t ? μ .+ ϵ .* sigma : μ)
+	t = m.decoder_t(m.sample_t ? μ .+ ϵ .* sigma : μ)
 
 	# create the random component for the sample of the key
 	ϵk = device(randn(m.rng, Float32, size(μ_hki)))
@@ -248,22 +248,24 @@ function (m::AttentionModel)(xt, xγ)
 	hqi = m.decoder_γq(m.sample_γ ? μ_hqi + ϵq .* σ_hqi : μ_hqi)
 
 	# add the current hidden representation of the key to the matrix that store all the hidden representations
-	m.Ks[:, m.it] = reshape(hki, :)
+	m.Ks[:, idx] = reshape(hki, :)
 
 	# if log_trick is true than store additional informations
 	if m.log_trick
-		m.μs[:, m.it] = vcat(μ_hki, μ_hqi)
-		m.ϵs[:, m.it] = vcat(ϵk, ϵq)
-		m.σs[:, m.it] = vcat(σ_hki, σ_hqi)
+		m.μs[:, idx] = vcat(μ_hki, μ_hqi)
+		m.ϵs[:, idx] = vcat(ϵk, ϵq)
+		m.σs[:, idx] = vcat(σ_hki, σ_hqi)
 	end
 
 	# compute the output to predict the new convex combination (after using it as input to a distribution function as softmax or sparsemax)
 	aq = device(size(hqi, 2) > 1 ? Flux.MLUtils.chunk(hqi, size(hqi, 2); dims = 2) : [hqi])
-	ak = (Flux.MLUtils.chunk(m.Ks[:, 1:m.it], Int64(size(m.Ks, 1) / m.h_representation); dims = 1))
+	ak = (Flux.MLUtils.chunk(m.Ks[:, 1:idx], Int64(size(m.Ks, 1) / m.h_representation); dims = 1))
 	γs = vcat(map((x, y) -> sum(x'y; dims = 1), aq, ak)...)
-	
+
 	#increases the iteration counter
-	m.it = m.it + 1
+	#if idx == m.it
+	#	m.it += 1
+	#end
 	return t, γs
 end
 
@@ -273,7 +275,18 @@ Flux.@layer AttentionModel
 """
 Function to create an `AttentionModel` given its hyper-parameters.
 """
-function create_NN(lt::AttentionModelFactory; h_act = gelu, h_representation::Int = 32, h_decoder::Vector{Int} = [h_representation * 8], seed::Int = 1, norm::Bool = false, sampling_t::Bool = false, sampling_θ::Bool = true, log_trick::Bool = false,ot_act=softplus)
+function create_NN(
+	lt::AttentionModelFactory;
+	h_act = gelu,
+	h_representation::Int = 32,
+	h_decoder::Vector{Int} = [h_representation * 8],
+	seed::Int = 1,
+	norm::Bool = false,
+	sampling_t::Bool = false,
+	sampling_θ::Bool = true,
+	log_trick::Bool = false,
+	ot_act = softplus,
+)
 	# possibly a normalization function, but is `norm` is false, then it is the identity
 	f_norm(x) = norm ? Flux.normalise(x) : identity(x)
 
@@ -282,12 +295,12 @@ function create_NN(lt::AttentionModelFactory; h_act = gelu, h_representation::In
 	init = Flux.truncated_normal(Flux.MersenneTwister(seed); mean = 0.0, std = 0.01)
 
 	#the encoder used to predict the hidden space, given the features of the current iteration,
-	encoder = Chain(f_norm, LSTM(size_features(lt)+size_comp_features(lt) => 6*h_representation))
+	encoder = Chain(f_norm, LSTM(size_features(lt) + size_comp_features(lt) => 6 * h_representation))
 
 	# construct the decoder that predicts `t` from its hidden representation
 	i_decoder_layer = Dense(h_representation => h_decoder[1], h_act; init)
 	h_decoder_layers = [Dense(h_decoder[i] => h_decoder[i+1], h_act; init) for i in 1:length(h_decoder)-1]
-	o_decoder_layers = Dense(h_decoder[end] => 2,ot_act; init)
+	o_decoder_layers = Dense(h_decoder[end] => 2, ot_act; init)
 	decoder_t = Chain(i_decoder_layer, h_decoder_layers..., o_decoder_layers)
 
 	# construct the decoder that predicts the query from its hidden representation

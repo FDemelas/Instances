@@ -43,11 +43,9 @@ function main(args)
 	@load "res/$(model_folder)/nn_best.bson" nn_best
 
 	global nn = (nn_best)
-	nn.encoder_t = Chain(x -> identity(x), nn_best.encoder_t[2:end]...)
-	nn.encoder_γ = Chain(x -> identity(x), nn.encoder_γ[2:end]...)
-	nn.encoder_t = gpu(nn.encoder_t)
+	nn.encoder = Chain(x -> identity(x), nn.encoder[2:end]...)
+	nn.encoder = gpu(nn.encoder)
 	nn.decoder_t = gpu(nn.decoder_t)
-	nn.encoder_γ = gpu(nn.encoder_γ)
 	nn.decoder_γk = gpu(nn.decoder_γk)
 	nn.decoder_γq = gpu(nn.decoder_γq)
 
