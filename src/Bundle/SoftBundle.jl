@@ -23,6 +23,7 @@ mutable struct SoftBundle <: AbstractSoftBundle
 	info::Dict
 	maxIt::Int
 	t::Vector{Float32}
+	size::Int64
 end
 
 """
@@ -33,7 +34,7 @@ The Bundle will be initialized to perform `maxIt` iterations (by default `10`).
 """
 function initializeBundle(bt::SoftBundleFactory, ϕ::AbstractConcaveFunction, z::AbstractArray, lt, maxIt::Int = 10)
 	# Construct Bundle structure
-	B = SoftBundle([], [], [], -1, [], [], [], Inf, [Inf], [Float32[]], lt, [], 0, 0, [], 1, Dict(), maxIt, [1.0])
+	B = SoftBundle([], [], [], -1, [], [], [], Inf, [Inf], [Float32[]], lt, [], 0, 0, [], 1, Dict(), maxIt, [1.0], 1)
 	# Compute objective and sub-gradient in z
 	obj, g = value_gradient(ϕ, reshape(z, sizeInputSpace(ϕ)))
 	# reshape gradient to a vector
@@ -70,20 +71,19 @@ Reinitialize the Bundle before the execution.
 This function allows to reuse the same Bundle multiple times without re-creating it.
 It is particularly usefull to train models and it should be called before each Bundle execution (even without Backward pass).
 """
-function reinitialize_Bundle!(B::SoftBundle, only_last::Bool = true)
+function reinitialize_Bundle!(B::SoftBundle)
 	# if reinitialize completely the bundle keeping only th e initialization point
-	if only_last
-		B.li = 1
-		B.s = 1
-	end
+	B.li = 1
+	B.s = 1
+	B.size = 1
 	# reinitialize the gradient matrix, the visited point matrix, the linearization error matrix and the objective value matrix
-	B.G = Zygote.bufferfrom(device(hcat([B.G[:, 1:B.li], zeros(size(B.G, 1), B.maxIt + 1 - B.li)]...)))
-	B.z = Zygote.bufferfrom(device(hcat([B.z[:, 1:B.li], zeros(size(B.z, 1), B.maxIt + 1 - B.li)]...)))
-	B.α = Zygote.bufferfrom(cpu(hcat(B.α[:, 1:B.li], zeros(size(B.α, 1), B.maxIt + 1 - B.li))))
-	B.obj = Zygote.bufferfrom(cpu(hcat(B.obj[:, 1:B.li], zeros(size(B.obj, 1), B.maxIt + 1 - B.li))))
+	B.G = Zygote.bufferfrom(device(hcat([B.G[:, 1], zeros(size(B.G, 1), B.maxIt)]...)))
+	B.z = Zygote.bufferfrom(device(hcat([B.z[:, 1], zeros(size(B.z, 1), B.maxIt)]...)))
+	B.α = Zygote.bufferfrom(cpu(hcat(B.α[:, 1], zeros(size(B.α, 1), B.maxIt))))
+	B.obj = Zygote.bufferfrom(cpu(hcat(B.obj[:, 1], zeros(size(B.obj, 1), B.maxIt))))
 	# The Dual Master Problem Solution and the new trial direction are straightforwad to compunte (B.w can be actually keeped all zero as unused before new prediction)
 	B.θ = ones(1, 1)
-	B.w = device(zeros(size(B.z, 1)))
+	B.w = device(B.G[:, 1])
 end
 
 """
@@ -116,11 +116,11 @@ function bundle_execution(
 			t0 = time()
 		end
 		# initialize the global features (for standard model AttentionModel) it is unused and initialized as zero 
-		featG = function_features(B, B.lt)
+		featG = 0.0 #function_features(B, B.lt)
 		# initilize some values
 		ignore_derivatives() do
 			# sub-gradient in the current trial-point
-			g = Zygote.bufferfrom(zeros(size(B.w)))
+			g = Zygote.bufferfrom(device(zeros(size(B.w))))
 			# objective value in the new trial point
 			obj_new = Zygote.bufferfrom(cpu(B.obj[B.li.*ones(Int64, 1)]))
 			# objective value in the stabilization point
@@ -164,7 +164,7 @@ function bundle_execution(
 				t1 = time()
 			end
 			# output of the model: step-size t and one value for each bundle component, i.e. γs[it] that has it components
-			t, γs[it] = m(xt, xγ)
+			t, γs[it] = m(xt, xγ, B.li)
 
 			# store B.t for features extraction (no derivative is needed as we did not differentate through features extraction)
 			ignore_derivatives() do
@@ -172,7 +172,7 @@ function bundle_execution(
 			end
 
 			# and index that allows to consider all the bundle components (by default as max_inst = + Inf) or just a fixed amount (max_inst < +Inf)
-			min_idx = Int64(max(1, minimum(B.li) - max_inst))
+			min_idx = Int64(max(1, minimum(B.size) - max_inst))
 
 			# model computing time
 			ignore_derivatives() do
@@ -184,7 +184,7 @@ function bundle_execution(
 			end
 
 			# Compute a simplex vector using the output γs[it] of the model
-			θ[it] = distribution_function(γs[it][:, min_idx:B.li]; dims = 2)
+			θ[it] = distribution_function(γs[it][:, min_idx:B.size]; dims = 2)
 
 			# store it for featurers extraction and store also the time used for computing this simplex vector
 			ignore_derivatives() do
@@ -197,7 +197,7 @@ function bundle_execution(
 			end
 
 			# Compute the new trial direction as convex combination of the gradients in the Bundle
-			w[it] = B.G[:, min_idx:B.li] * θ[it][1, :]
+			w[it] = B.G[:, min_idx:B.size] * θ[it][1, :]
 
 			# Store this direction for features extraction and store the time to compute that convex combination
 			ignore_derivatives() do
@@ -223,7 +223,7 @@ function bundle_execution(
 
 			# Compute the value and the sub-gradient associated to the new trial point
 			v, g_tmp = value_gradient(ϕ, z_new[:])
-			g[:] = cpu(g_tmp)
+			g[:] = device(g_tmp)
 			obj_new[1] = v
 
 			# Store the time for value, gradient computation
@@ -232,8 +232,22 @@ function bundle_execution(
 				append!(times["lsp"], time() - t1)
 			end
 
-			# Update the last inserted index
-			B.li += 1
+
+
+			already_in = false
+			ignore_derivatives() do
+				for i in 1:B.size
+					if sum(B.G[:, i] - g[:]) < 1.0e-6
+						already_in = true
+						B.li = i
+					else
+						# Update the bundle size
+						B.size += 1
+						B.li = B.size
+					end
+				end
+			end
+
 
 			ignore_derivatives() do
 				t1 = time()
