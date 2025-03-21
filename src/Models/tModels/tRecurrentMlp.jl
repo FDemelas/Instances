@@ -134,7 +134,7 @@ end
 """
 Function to create a `RnnTModel` model given its hyper-parameters.
 """
-function create_NN(lt::RnnTModelfactory,recurrent_layer=GRUv3, h_decoder::Vector{Int} = [512, 128], h_act = tanh, h_representation::Int = 64, seed::Int = 1, norm::Bool = false)
+function create_NN(lt::RnnTModelfactory,recurrent_layer=GRUv3, h_decoder::Vector{Int} = [512, 256], h_act = tanh, h_representation::Int = 128, seed::Int = 1, norm::Bool = false)
 	# normalize or not the input
 	f_norm(x) = norm ? Flux.normalise(x) : identity(x)
 
