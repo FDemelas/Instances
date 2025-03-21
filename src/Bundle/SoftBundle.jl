@@ -24,6 +24,7 @@ mutable struct SoftBundle <: AbstractSoftBundle
 	maxIt::Int
 	t::Vector{Float32}
 	size::Int64
+	lis::Vector{Int64}
 end
 
 """
@@ -34,7 +35,7 @@ The Bundle will be initialized to perform `maxIt` iterations (by default `10`).
 """
 function initializeBundle(bt::SoftBundleFactory, ϕ::AbstractConcaveFunction, z::AbstractArray, lt, maxIt::Int = 10)
 	# Construct Bundle structure
-	B = SoftBundle([], [], [], -1, [], [], [], Inf, [Inf], [Float32[]], lt, [], 0, 0, [], 1, Dict(), maxIt, [1.0], 1)
+	B = SoftBundle([], [], [], -1, [], [], [], Inf, [Inf], [Float32[]], lt, [], 0, 0, [], 1, Dict(), maxIt, [1.0], 1,[])
 	# Compute objective and sub-gradient in z
 	obj, g = value_gradient(ϕ, reshape(z, sizeInputSpace(ϕ)))
 	# reshape gradient to a vector
@@ -76,6 +77,7 @@ function reinitialize_Bundle!(B::SoftBundle)
 	B.li = 1
 	B.s = 1
 	B.size = 1
+	B.lis=[]
 	# reinitialize the gradient matrix, the visited point matrix, the linearization error matrix and the objective value matrix
 	B.G = Zygote.bufferfrom(device(hcat([B.G[:, 1], zeros(size(B.G, 1), B.maxIt)]...)))
 	B.z = Zygote.bufferfrom(device(hcat([B.z[:, 1], zeros(size(B.z, 1), B.maxIt)]...)))
@@ -164,7 +166,7 @@ function bundle_execution(
 				t1 = time()
 			end
 			# output of the model: step-size t and one value for each bundle component, i.e. γs[it] that has it components
-			t, γs[it] = m(xt, xγ, B.li)
+			t, γs[it] = m(xt, xγ, B.li,B.size)
 
 			# store B.t for features extraction (no derivative is needed as we did not differentate through features extraction)
 			ignore_derivatives() do
@@ -240,12 +242,13 @@ function bundle_execution(
 					if sum(B.G[:, i] - g[:]) < 1.0e-6
 						already_in = true
 						B.li = i
-					else
-						# Update the bundle size
-						B.size += 1
-						B.li = B.size
 					end
 				end
+				if already_in == false
+					B.size += 1
+					B.li = B.size
+				end
+				append!(B.lis,B.li)
 			end
 
 

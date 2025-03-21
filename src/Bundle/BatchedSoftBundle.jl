@@ -25,6 +25,7 @@ mutable struct BatchedSoftBundle <: AbstractSoftBundle
 	t::Vector{Float32}
 	idxComp::AbstractArray
 	size::Int64
+	lis::Vector{Int64}
 end
 
 """
@@ -36,7 +37,7 @@ The Bundle will be initialized to perform `maxIt` iterations (by default `10`).
 """
 function initializeBundle(bt::BatchedSoftBundleFactory, ϕs::Vector{<:AbstractConcaveFunction}, z::Vector{<:AbstractArray}, lt, maxIt::Int = 10)
 	# Construct Bundle structure
-	B = BatchedSoftBundle([], [], [], [-1], [], [], [], Inf, [Inf], [Float32[]], lt, [], 0, 0, [], 1, Dict(), maxIt, zeros(length(ϕs)), [], 1)
+	B = BatchedSoftBundle([], [], [], [-1], [], [], [], Inf, [Inf], [Float32[]], lt, [], 0, 0, [], 1, Dict(), maxIt, zeros(length(ϕs)), [], 1,[])
 	# the batch size is equal to the number of input functions
 	batch_size = length(ϕs)
 	sLM = []
@@ -96,6 +97,7 @@ function reinitialize_Bundle!(B::BatchedSoftBundle)
 	# if reinitialize completely the bundle keeping only th e initialization point
 	B.li = 1
 	B.size = 1
+	B.lis=[]
 	B.s = ones(length(B.idxComp))
 	# reinitialize the gradient matrix, the visited point matrix, the linearization error matrix and the objective value matrix
 	B.G = Zygote.bufferfrom(device(hcat([B.G[:, 1], zeros(size(B.G, 1), B.maxIt)]...)))
@@ -184,7 +186,7 @@ function bundle_execution(
 			end
 
 			# output of the model: step-size t and one value for each bundle component, i.e. γs[it] that has it components
-			t, γs[it] = m(xt, xγ, B.li)
+			t, γs[it] = m(xt, xγ, B.li,B.size)
 			B.t = device(reshape(t, :))
 
 			# and index that allows to consider all the bundle components (by default as max_inst = + Inf) or just a fixed amount (max_inst < +Inf)
@@ -247,12 +249,13 @@ function bundle_execution(
 					if sum(B.G[:, i] - g[:]) < 1.0e-6
 						already_in = true
 						B.li = i
-					else
-						# Update the bundle size
-						B.size += 1
-						B.li = B.size
 					end
 				end
+				if already_in == false
+					B.size += 1
+					B.li = B.size
+				end
+				append!(B.lis,B.li)
 			end
 
 

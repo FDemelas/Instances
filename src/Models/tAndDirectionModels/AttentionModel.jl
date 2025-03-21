@@ -12,16 +12,16 @@ Create the features vector for a model of type `AttentionModelFactory` using the
 function create_features(lt::AttentionModelFactory, B::SoftBundle; auxiliary = 0)
 	t = sum(B.t)
 	obj = cpu(B.obj)
-	jθ = B.li == 1 ? 1 : B.li - 1
+	jθ = B.size == 1 ? 1 : B.size - 1
 	θ = cpu(B.θ)[1:jθ]
-	α = cpu(B.α[1:B.li])
+	α = cpu(B.α[1:B.size])
 	i, s, e = 1, 1, length(B.w)
 	lp = sum(α[1:length(θ)]' * θ)
 	qp = sum(B.w' * B.w)
 
-	zz = cpu(B.z[:, :]' * B.z[:, B.li])
+	zz = cpu(B.z[:, :]' * B.z[:, B.size])
 	zsz = cpu(B.z[:, :]' * B.z[:, B.s])
-	gg = cpu(B.G[:, :]' * B.G[:, B.li])
+	gg = cpu(B.G[:, :]' * B.G[:, B.size])
 	gsg = cpu(B.G[:, :]' * B.G[:, B.s])
 
 	ϕ = Float32[t,
@@ -74,17 +74,17 @@ Create the features vector for a model of type `AttentionModelFactory` using the
 function create_features(lt::AttentionModelFactory, B::BatchedSoftBundle; auxiliary = 0)
 	let feat_t, feat_theta
 		t = B.t
-		mli = 1#max(1, B.li)# - 99)
-		obj = B.obj[:, 1:B.li]
-		α = B.α[:, 1:B.li]
+		mli = 1
+		obj = B.obj[:, 1:B.size]
+		α = B.α[:, 1:B.size]
 		for (i, (s, e)) in enumerate(B.idxComp)
 			θ = cpu(reshape(B.θ[i, :], :))
-			lp = α[i, 1:max(1, B.li - 1)]' * θ
+			lp = α[i, 1:length(θ)]' * θ
 
-			zz = cpu(B.z[s:e, B.li]' * B.z[s:e, mli:B.li])#[B.z[s:e, B.li]' * B.z[s:e, j] for j in mli:B.li]
-			zsz = cpu(B.z[s:e, B.s[i]]' * B.z[s:e, mli:B.li])
-			gg = cpu(B.G[s:e, B.li]' * B.G[s:e, mli:B.li])
-			gsg = cpu(B.G[s:e, B.s[i]]' * B.G[s:e, mli:B.li])
+			zz = cpu(B.z[s:e, B.li]' * B.z[s:e, mli:B.size])
+			zsz = cpu(B.z[s:e, B.s[i]]' * B.z[s:e, mli:B.size])
+			gg = cpu(B.G[s:e, B.li]' * B.G[s:e, mli:B.size])
+			gsg = cpu(B.G[s:e, B.s[i]]' * B.G[s:e, mli:B.size])
 			ww = B.w[s:e]' * B.w[s:e]
 
 			ϕ = Float32[t[i],
@@ -99,12 +99,11 @@ function create_features(lt::AttentionModelFactory, B::BatchedSoftBundle; auxili
 				B.li,
 				α[i, B.s[i]],
 				α[i, B.li],
-				sqrt(sum(zz[:, B.li]))/2,
-				sqrt(sum(zsz[:, B.s[i]]) / 2),
-				sqrt(sum(gsg[:, B.s[i]]) / 2),
-				sqrt(sum(gg[:, B.li]) / 2),
+				sqrt(sum(zz[B.li]))/2,
+				sqrt(sum(zsz[B.s[i]]) / 2),
+				sqrt(sum(gsg[B.s[i]]) / 2),
+				sqrt(sum(gg[B.li]) / 2),
 			]
-
 			ϕγ = Float32[mean(B.G[s:e, B.li]),
 				mean(B.z[s:e, B.li]),
 				std(B.G[s:e, B.li]),
@@ -125,8 +124,6 @@ function create_features(lt::AttentionModelFactory, B::BatchedSoftBundle; auxili
 				B.G[s:e, B.s[i]]'*B.w[s:e],
 				α[i, B.li],
 				obj[i, B.li]]
-			#            ϕγ = vcat(α[i, B.li],obj[i, B.li])#B.z[idxs, B.li],B.G[idxs, B.li],
-
 			if i == 1
 				feat_t, feat_theta = ϕ, ϕγ
 			else
@@ -206,7 +203,7 @@ The inputs are:
 - `xt`: features of t;
 - `xγ`: features of the bundle component.
 """
-function (m::AttentionModel)(xt, xγ, idx = m.it)
+function (m::AttentionModel)(xt, xγ, idx, sizeB)
 	# append the features for t and for γs
 	x = vcat(xt, xγ)
 
@@ -259,13 +256,9 @@ function (m::AttentionModel)(xt, xγ, idx = m.it)
 
 	# compute the output to predict the new convex combination (after using it as input to a distribution function as softmax or sparsemax)
 	aq = device(size(hqi, 2) > 1 ? Flux.MLUtils.chunk(hqi, size(hqi, 2); dims = 2) : [hqi])
-	ak = (Flux.MLUtils.chunk(m.Ks[:, 1:idx], Int64(size(m.Ks, 1) / m.h_representation); dims = 1))
+	ak = (Flux.MLUtils.chunk(m.Ks[:, 1:sizeB], Int64(size(m.Ks, 1) / m.h_representation); dims = 1))
 	γs = vcat(map((x, y) -> sum(x'y; dims = 1), aq, ak)...)
 
-	#increases the iteration counter
-	#if idx == m.it
-	#	m.it += 1
-	#end
 	return t, γs
 end
 
@@ -300,7 +293,7 @@ function create_NN(
 	# construct the decoder that predicts `t` from its hidden representation
 	i_decoder_layer = Dense(h_representation => h_decoder[1], h_act; init)
 	h_decoder_layers = [Dense(h_decoder[i] => h_decoder[i+1], h_act; init) for i in 1:length(h_decoder)-1]
-	o_decoder_layers = Dense(h_decoder[end] => 2, ot_act; init)
+	o_decoder_layers = Dense(h_decoder[end] => 1, ot_act; init)
 	decoder_t = Chain(i_decoder_layer, h_decoder_layers..., o_decoder_layers)
 
 	# construct the decoder that predicts the query from its hidden representation
