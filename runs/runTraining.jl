@@ -267,7 +267,7 @@ function main(args)
 				mv = 0.0
 				B.maxIt = incremental ? min(2 * it * maxIt / maxEp, maxIt) : maxIt
 				r_f = (batch_size > 1 || a_b ? sum(sizeE(f.inst) for f in ϕ) : sizeE(ϕ.inst)) * maxIt / (last - first + 1)
-				vv, grads = Flux.withgradient((m) -> -BundleNetworks.bundle_execution(B, ϕ, m; soft_updates = soft_updates, λ = lambda, γ = gamma, δ = delta, distribution_function, verbose = 0) / r_f, nn)
+				vv, grads = Flux.withgradient((m) -> .- BundleNetworks.bundle_execution(B, ϕ, m; soft_updates = soft_updates, λ = lambda, γ = gamma, δ = delta, distribution_function, verbose = 0,inference=false) / r_f, nn)
 				vv = -vv
 
 				_, nn = Flux.Optimisers.update!(opt_st, nn, grads[1])
@@ -276,12 +276,12 @@ function main(args)
 				#end
 				if batch_size == 1 && !a_b
 					append!(ls, mv)
-					append!(vs, maximum(B.obj))
-					append!(gs, gap(maximum(B.obj) * ϕ.rescaling_factor, gold[idx]))
+					append!(vs, maximum(B.obj[B.lis]))
+					append!(gs, gap(maximum(B.obj[B.lis]) * ϕ.rescaling_factor, gold[idx]))
 				else
 					append!(ls, mv)
-					append!(vs, mean(maximum(B.obj[j, :]) * ϕ[j].rescaling_factor for j in eachindex(idx)))
-					append!(gs, mean([gap(maximum(B.obj[j, :]) * ϕ[j].rescaling_factor, gold[idx[j]]) for j in eachindex(idx)]))
+					append!(vs, mean(maximum(B.obj[j, B.lis]) * ϕ[j].rescaling_factor for j in eachindex(idx)))
+					append!(gs, mean([gap(maximum(B.obj[j, B.lis]) * ϕ[j].rescaling_factor, gold[idx[j]]) for j in eachindex(idx)]))
 				end
 				#				nn = B.nn
 				first += batch_size
@@ -325,21 +325,21 @@ function main(args)
 				BundleNetworks.reinitialize_Bundle!(B)
 				t0 = time()
 				r_f = (batch_size > 1 || a_b ? sum(sizeE(f.inst) for f in ϕ) : sizeE(ϕ.inst)) * maxIt / (last - first + 1)
-				val = BundleNetworks.bundle_execution(B, ϕ, nn; soft_updates = soft_updates, λ = lambda, γ = gamma, δ = delta, distribution_function, verbose = 0) / r_f
+				val = BundleNetworks.bundle_execution(B, ϕ, nn; soft_updates = soft_updates, λ = lambda, γ = gamma, δ = delta, distribution_function, verbose = 0,inference=false) / r_f
 
 				time_val = time() - t0
 				append!(ls_v, val)
 
 				if batch_size == 1 && !a_b
-					append!(vs_v, maximum(B.obj))
-					append!(gs_v, gap(maximum(B.obj) * ϕ.rescaling_factor, gold[idx]))
-					append!(vs_v_tI, maximum(B.obj[1:min(maxIt, maxItVal)]))
-					append!(gs_v_tI, gap(maximum(B.obj[1:min(maxIt, maxItVal)]) * ϕ.rescaling_factor, gold[idx]))
+					append!(vs_v, maximum(B.obj[B.lis]))
+					append!(gs_v, gap(maximum(B.obj[B.lis]) * ϕ.rescaling_factor, gold[idx]))
+					append!(vs_v_tI, maximum(B.obj[B.lis]))
+					append!(gs_v_tI, gap(maximum(B.obj[B.lis]) * ϕ.rescaling_factor, gold[idx]))
 				else
-					append!(vs_v, mean(maximum(B.obj[j, 1:max(maxIt, maxItVal)]) * ϕ[j].rescaling_factor for j in eachindex(idx)))
-					append!(gs_v, mean([gap(maximum(B.obj[j, 1:max(maxIt, maxItVal)]) * ϕ[j].rescaling_factor, gold[idx[j]]) for j in eachindex(idx)]))
-					append!(vs_v_tI, mean(maximum(B.obj[j, 1:min(maxIt, maxItVal)]) * ϕ[j].rescaling_factor for j in eachindex(idx)))
-					append!(gs_v_tI, mean([gap(maximum(B.obj[j, 1:min(maxIt, maxItVal)]) * ϕ[j].rescaling_factor, gold[idx[j]]) for j in eachindex(idx)]))
+					append!(vs_v, mean(maximum(B.obj[j, B.lis]) * ϕ[j].rescaling_factor for j in eachindex(idx)))
+					append!(gs_v, mean([gap(maximum(B.obj[j, B.lis]) * ϕ[j].rescaling_factor, gold[idx[j]]) for j in eachindex(idx)]))
+					append!(vs_v_tI, mean(maximum(B.obj[j, B.lis[1:min(maxIt, maxItVal)]]) * ϕ[j].rescaling_factor for j in eachindex(idx)))
+					append!(gs_v_tI, mean([gap(maximum(B.obj[j, B.lis[1:min(maxIt, maxItVal)]]) * ϕ[j].rescaling_factor, gold[idx[j]]) for j in eachindex(idx)]))
 					first += batch_size
 					last += batch_size
 					last = min(last, mvi)

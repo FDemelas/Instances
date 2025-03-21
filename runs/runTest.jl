@@ -48,7 +48,7 @@ function main(args)
 	nn.decoder_t = gpu(nn.decoder_t)
 	nn.decoder_γk = gpu(nn.decoder_γk)
 	nn.decoder_γq = gpu(nn.decoder_γq)
-
+	nn=gpu(nn)
 
 	dataset_path = "res/$(model_folder)/dataset.json"
 	f = JSON.open(dataset_path, "r")
@@ -84,8 +84,8 @@ function main(args)
 
 			v, times = BundleNetworks.bundle_execution(B, ϕ, nn; soft_updates = soft_updates, λ = 0.0, γ = 0.0, δ = 0.0, distribution_function = BundleNetworks.sparsemax, verbose = 0, inference = true)
 			res["times"][j][idx] = times
-			res["objs"][idx] = reshape(B.obj[:], :) .* ϕ[1].rescaling_factor
-			println(v, " ", maximum(reshape(B.obj[:], :)))
+			res["objs"][idx] = reshape(B.obj[B.lis], :) .* ϕ[1].rescaling_factor
+			println(v, " ", maximum(reshape(B.obj[B.lis], :)))
 
 
 		end
