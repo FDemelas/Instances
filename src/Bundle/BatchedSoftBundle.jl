@@ -244,7 +244,6 @@ function bundle_execution(
 			end
 
 			already_in = false
-			ignore_derivatives() do
 				for i in 1:B.size
 					if sum(B.G[:, i] - g[:]) < 1.0e-6
 						already_in = true
@@ -255,6 +254,8 @@ function bundle_execution(
 					B.size += 1
 					B.li = B.size
 				end
+
+			ignore_derivatives() do
 				append!(B.lis,B.li)
 			end
 
