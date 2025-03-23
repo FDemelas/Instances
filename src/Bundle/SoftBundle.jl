@@ -25,6 +25,7 @@ mutable struct SoftBundle <: AbstractSoftBundle
 	t::Vector{Float32}
 	size::Int64
 	lis::Vector{Int64}
+	reduced_components::Bool
 end
 
 """
@@ -33,9 +34,9 @@ Considering the function `ϕ` and the staring point `z`.
 `lt` will be the factory of the model that we want consider for the prediction at the place of the Dual Master Problem.
 The Bundle will be initialized to perform `maxIt` iterations (by default `10`).
 """
-function initializeBundle(bt::SoftBundleFactory, ϕ::AbstractConcaveFunction, z::AbstractArray, lt, maxIt::Int = 10)
+function initializeBundle(bt::SoftBundleFactory, ϕ::AbstractConcaveFunction, z::AbstractArray, lt, maxIt::Int = 10,reduced_components::Bool=false)
 	# Construct Bundle structure
-	B = SoftBundle([], [], [], -1, [], [], [], Inf, [Inf], [Float32[]], lt, [], 0, 0, [], 1, Dict(), maxIt, [1.0], 1,[])
+	B = SoftBundle([], [], [], -1, [], [], [], Inf, [Inf], [Float32[]], lt, [], 0, 0, [], 1, Dict(), maxIt, [1.0], 1,[],reduced_components)
 	# Compute objective and sub-gradient in z
 	obj, g = value_gradient(ϕ, reshape(z, sizeInputSpace(ϕ)))
 	# reshape gradient to a vector
@@ -236,21 +237,25 @@ function bundle_execution(
 			end
 
 
-
-			already_in = false
-			#ignore_derivatives() do
+			if B.reduced_components
+				already_in = false
 				for i in 1:Bsize[it]
 					if sum(B.G[:, i] - g[:]) < 1.0e-6
 						already_in = true
 						B.li = i
 					end
 				end
-				if already_in 
+				if already_in
 					Bsize[it+1] = Bsize[it]
 				else
 					Bsize[it+1] = Bsize[it] + 1
 					B.li = Bsize[it+1]
 				end
+			else
+				Bsize[it+1] = Bsize[it] + 1
+				B.li = Bsize[it+1]
+			end
+
 			ignore_derivatives() do
 				append!(B.lis,B.li)
 			end

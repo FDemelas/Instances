@@ -124,6 +124,10 @@ function main(args)
 		arg_type = Bool
 		default = false
 		help = "sample in the latent space to predicts keys and queries used to compute theta and then the coefficients thetas of the convex combination."
+		"--reduced_components"
+		arg_type = Bool
+		default = false
+		help = "If true add a component to the bundle only if it was not visited a point with the same sub-gradient. Otherwhise not add the component, but update the associated values."
 	end
 
 	# take the input parameters and construct a Dictionary
@@ -153,6 +157,7 @@ function main(args)
 	a_b = parsed_args["always_batch"]
 	h_act = (parsed_args["h_act"] == "softplus") ? softplus : (parsed_args["h_act"] == "tanh" ? tanh : (parsed_args["h_act"] == "gelu" ? gelu : relu))
 	sampling_θ = parsed_args["sampling_gamma"]
+	reduced_components = parsed_args["reduced_components"]
 	distribution_function = use_softmax ? softmax : (BundleNetworks.sparsemax)
 	rng = Random.MersenneTwister(seed)
 	directory = shuffle(rng, readdir(folder))
@@ -258,7 +263,7 @@ function main(args)
 				ϕ = batch_size > 1 || a_b ? [s[2] for s in sample] : sample[1][2]
 				z = batch_size == 1 && !a_b ? zeros(prod(sizeInputSpace(ϕ))) : [zeros(prod(sizeInputSpace(ϕi))) for ϕi in ϕ]
 				bt = batch_size == 1 && !a_b ? SoftBundleFactory() : BatchedSoftBundleFactory()
-				B = BundleNetworks.initializeBundle(bt, ϕ, z, factory, maxIt + 1)
+				B = BundleNetworks.initializeBundle(bt, ϕ, z, factory, maxIt + 1,reduced_components)
 				B.maxIt = incremental ? min(2 * it * maxIt / maxEp, maxIt) : maxIt
 
 				BundleNetworks.reset!(nn, max(1, last - first + 1))
@@ -318,7 +323,7 @@ function main(args)
 				ϕ = batch_size > 1 || a_b ? [s[2] for s in sample] : sample[1][2]
 				z = batch_size == 1 && !a_b ? zeros(prod(sizeInputSpace(ϕ))) : [zeros(prod(sizeInputSpace(ϕi))) for ϕi in ϕ]
 				bt = batch_size == 1 && !a_b ? SoftBundleFactory() : BatchedSoftBundleFactory()
-				B = BundleNetworks.initializeBundle(bt, ϕ, z, factory, max(maxIt, maxItVal) + 1)
+				B = BundleNetworks.initializeBundle(bt, ϕ, z, factory, max(maxIt, maxItVal) + 1,reduced_components)
 				B.maxIt = max(maxIt, maxItVal)
 				BundleNetworks.reset!(nn, max(1, last - first + 1))
 

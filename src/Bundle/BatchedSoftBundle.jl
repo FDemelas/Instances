@@ -27,6 +27,7 @@ mutable struct BatchedSoftBundle <: AbstractSoftBundle
 	idxComp::AbstractArray
 	size::Int64
 	lis::Vector{Int64}
+	reduced_components::Bool
 end
 
 """
@@ -36,9 +37,9 @@ Considering the functions contained in the vector `ϕs` and the staring points c
 `lt` will be the factory of the model that we want consider for the prediction at the place of the Dual Master Problem.
 The Bundle will be initialized to perform `maxIt` iterations (by default `10`).
 """
-function initializeBundle(bt::BatchedSoftBundleFactory, ϕs::Vector{<:AbstractConcaveFunction}, z::Vector{<:AbstractArray}, lt, maxIt::Int = 10)
+function initializeBundle(bt::BatchedSoftBundleFactory, ϕs::Vector{<:AbstractConcaveFunction}, z::Vector{<:AbstractArray}, lt, maxIt::Int = 10, reduced_components::Bool = false)
 	# Construct Bundle structure
-	B = BatchedSoftBundle([], [], [], [-1], [], [], [], Inf, [Inf], [Float32[]], lt, [], 0, 0, [], 1, Dict(), maxIt, zeros(length(ϕs)), [], 1,[])
+	B = BatchedSoftBundle([], [], [], [-1], [], [], [], Inf, [Inf], [Float32[]], lt, [], 0, 0, [], 1, Dict(), maxIt, zeros(length(ϕs)), [], 1, [], reduced_components)
 	# the batch size is equal to the number of input functions
 	batch_size = length(ϕs)
 	sLM = []
@@ -98,7 +99,7 @@ function reinitialize_Bundle!(B::BatchedSoftBundle)
 	# if reinitialize completely the bundle keeping only th e initialization point
 	B.li = 1
 	B.size = 1
-	B.lis=[]
+	B.lis = []
 	B.s = ones(length(B.idxComp))
 	# reinitialize the gradient matrix, the visited point matrix, the linearization error matrix and the objective value matrix
 	B.G = Zygote.bufferfrom(device(hcat([B.G[:, 1], zeros(size(B.G, 1), B.maxIt)]...)))
@@ -132,7 +133,7 @@ function bundle_execution(
 	z_bar = Zygote.bufferfrom(Float32.(vcat([B.z[s:e, B.s[i]] for (i, (s, e)) in enumerate(B.idxComp)]...))),
 	z_new = Zygote.bufferfrom(B.z[:, B.li]))
 	# Some global data initialized into inner blocks (as ignore_derivatives() ) should be defined in a more global scope
-	let xt, xγ, z_copy, LR_vec, Baseline, obj_new, obj_bar, g, t0, t1, times, maxIt, t, γs, θ,Bsize
+	let xt, xγ, z_copy, LR_vec, Baseline, obj_new, obj_bar, g, t0, t1, times, maxIt, t, γs, θ, Bsize
 		# Initialize a dictionary to store times and the maximum iteration number
 		ignore_derivatives() do
 			times = Dict("init" => 0.0, "iters" => [], "model" => [], "distribution" => [], "features" => [], "stab_point" => [], "update_bundle" => [], "update_direction" => [], "update_point" => [], "lsp" => [])
@@ -159,7 +160,7 @@ function bundle_execution(
 			B.objB = 0
 			# initialization time
 			times["init"] = time() - t0
-			Bsize=Zygote.bufferfrom(Int64.(ones(maxIt+1)))
+			Bsize = Zygote.bufferfrom(Int64.(ones(maxIt + 1)))
 		end
 		for it in 1:maxIt
 			ignore_derivatives() do
@@ -169,7 +170,7 @@ function bundle_execution(
 			# no Back-Propagation here
 			# create features and resize them properly
 			ignore_derivatives() do
-				B.size=Bsize[it]
+				B.size = Bsize[it]
 				xt, xγ = device(create_features(B.lt, B; auxiliary = featG))
 				if size(xt)[1] == length(xt)
 					xt = reshape(xt, (length(xt), 1))
@@ -189,7 +190,7 @@ function bundle_execution(
 			end
 
 			# output of the model: step-size t and one value for each bundle component, i.e. γs[it] that has it component
-			t, γs[it] = m(xt, xγ, B.li,Bsize[it])
+			t, γs[it] = m(xt, xγ, B.li, Bsize[it])
 			B.t = device(reshape(t, :))
 
 			# and index that allows to consider all the bundle components (by default as max_inst = + Inf) or just a fixed amount (max_inst < +Inf)
@@ -246,7 +247,8 @@ function bundle_execution(
 				obj_new[i] = v
 			end
 
-			already_in = false
+			if B.reduced_components
+				already_in = false
 				for i in 1:Bsize[it]
 					if sum(B.G[:, i] - g[:]) < 1.0e-6
 						already_in = true
@@ -259,9 +261,13 @@ function bundle_execution(
 					Bsize[it+1] = Bsize[it] + 1
 					B.li = Bsize[it+1]
 				end
+			else
+				Bsize[it+1] = Bsize[it] + 1
+				B.li = Bsize[it+1]
+			end
 
 			ignore_derivatives() do
-				append!(B.lis,B.li)
+				append!(B.lis, B.li)
 			end
 
 
