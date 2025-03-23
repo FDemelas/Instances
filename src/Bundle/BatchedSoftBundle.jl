@@ -1,3 +1,4 @@
+
 """
 BatchedSoftBundle structure.
 It works as SoftBundle structure, but allows to handle multiple bundle execution in parallel in order to perform batching.
@@ -131,7 +132,7 @@ function bundle_execution(
 	z_bar = Zygote.bufferfrom(Float32.(vcat([B.z[s:e, B.s[i]] for (i, (s, e)) in enumerate(B.idxComp)]...))),
 	z_new = Zygote.bufferfrom(B.z[:, B.li]))
 	# Some global data initialized into inner blocks (as ignore_derivatives() ) should be defined in a more global scope
-	let xt, xγ, z_copy, LR_vec, Baseline, obj_new, obj_bar, g, t0, t1, times, maxIt, t, γs, θ
+	let xt, xγ, z_copy, LR_vec, Baseline, obj_new, obj_bar, g, t0, t1, times, maxIt, t, γs, θ,Bsize
 		# Initialize a dictionary to store times and the maximum iteration number
 		ignore_derivatives() do
 			times = Dict("init" => 0.0, "iters" => [], "model" => [], "distribution" => [], "features" => [], "stab_point" => [], "update_bundle" => [], "update_direction" => [], "update_point" => [], "lsp" => [])
@@ -158,6 +159,7 @@ function bundle_execution(
 			B.objB = 0
 			# initialization time
 			times["init"] = time() - t0
+			Bsize=Zygote.bufferfrom(Int64.(ones(maxIt+1)))
 		end
 		for it in 1:maxIt
 			ignore_derivatives() do
@@ -167,6 +169,7 @@ function bundle_execution(
 			# no Back-Propagation here
 			# create features and resize them properly
 			ignore_derivatives() do
+				B.size=Bsize[it]
 				xt, xγ = device(create_features(B.lt, B; auxiliary = featG))
 				if size(xt)[1] == length(xt)
 					xt = reshape(xt, (length(xt), 1))
@@ -185,12 +188,12 @@ function bundle_execution(
 				t1 = time()
 			end
 
-			# output of the model: step-size t and one value for each bundle component, i.e. γs[it] that has it components
-			t, γs[it] = m(xt, xγ, B.li,B.size)
+			# output of the model: step-size t and one value for each bundle component, i.e. γs[it] that has it component
+			t, γs[it] = m(xt, xγ, B.li,Bsize[it])
 			B.t = device(reshape(t, :))
 
 			# and index that allows to consider all the bundle components (by default as max_inst = + Inf) or just a fixed amount (max_inst < +Inf)
-			min_idx = Int64(max(1, minimum(B.size) - max_inst))
+			min_idx = Int64(max(1, minimum(Bsize[it]) - max_inst))
 			# model computing time
 			ignore_derivatives() do
 				append!(times["model"], time() - t1)
@@ -201,7 +204,7 @@ function bundle_execution(
 			end
 
 			# Compute a simplex vector using the output γs[it] of the model
-			θ[it] = distribution_function(γs[it][:, min_idx:B.size]; dims = 2)
+			θ[it] = distribution_function(γs[it][:, min_idx:Bsize[it]]; dims = 2)
 
 			# store it for featurers extraction and store also the time used for computing this simplex vector
 			ignore_derivatives() do
@@ -214,7 +217,7 @@ function bundle_execution(
 			end
 
 			# Compute the new trial direction as convex combination of the gradients in the Bundle
-			B.w = vcat([B.G[s:e, min_idx:B.size] * θ[it][i, :] for (i, (s, e)) in enumerate(B.idxComp)]...)
+			B.w = vcat([B.G[s:e, min_idx:Bsize[it]] * θ[it][i, :] for (i, (s, e)) in enumerate(B.idxComp)]...)
 
 			# Store the time to compute that convex combination
 			ignore_derivatives() do
@@ -244,15 +247,17 @@ function bundle_execution(
 			end
 
 			already_in = false
-				for i in 1:B.size
+				for i in 1:Bsize[it]
 					if sum(B.G[:, i] - g[:]) < 1.0e-6
 						already_in = true
 						B.li = i
 					end
 				end
-				if already_in == false
-					B.size += 1
-					B.li = B.size
+				if already_in
+					Bsize[it+1] = Bsize[it]
+				else
+					Bsize[it+1] = Bsize[it] + 1
+					B.li = Bsize[it+1]
 				end
 
 			ignore_derivatives() do
@@ -330,7 +335,7 @@ function bundle_execution(
 		else
 			# at training time return the loss value
 			# first a telescopic sum of all the visited points
-			vγ = (γ > 0 ? mean(γ * mean([γ^(B.size - i) for i in (B.size):-1:1] .* [ϕ[iϕ](reshape(z[s:e], sizeInputSpace(ϕ[iϕ]))) for z in eachcol(B.z[:, 1:B.size])]) for (iϕ, (s, e)) in enumerate(B.idxComp)) : 0)
+			vγ = (γ > 0 ? mean(γ * mean([γ^(Bsize[maxIt+1] - i) for i in (Bsize[maxIt+1]):-1:1] .* [ϕ[iϕ](reshape(z[s:e], sizeInputSpace(ϕ[iϕ]))) for z in eachcol(B.z[:, 1:Bsize[maxIt+1]])]) for (iϕ, (s, e)) in enumerate(B.idxComp)) : 0)
 			# then also a convex combination of final trial point and final stabilization point
 			vλ = mean((1 - λ) * ϕ[iϕ](reshape(z_bar[s:e], sizeInputSpace(ϕ[iϕ]))) + (λ) * ϕ[iϕ](reshape(z_new[s:e], sizeInputSpace(ϕ[iϕ]))) for (iϕ, (s, e)) in enumerate(B.idxComp))
 			# the loss will be the sum of the two

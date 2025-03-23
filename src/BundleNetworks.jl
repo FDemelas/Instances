@@ -13,7 +13,7 @@ using CUDA
 import CUDA: CuArray
 import Flux: gpu, cpu
 
-#CUDA.set_runtime_version!(v"12.1")
+CUDA.set_runtime_version!(v"12.1")
 use_gpu = true #false # true
 device = CUDA.functional() && use_gpu ? gpu : cpu
 

@@ -276,7 +276,7 @@ function main(args)
 				#end
 				if batch_size == 1 && !a_b
 					append!(ls, mv)
-					append!(vs, maximum(B.obj))
+					append!(vs, maximum(B.obj) * ϕ.rescaling_factor)
 					append!(gs, gap(maximum(B.obj) * ϕ.rescaling_factor, gold[idx]))
 				else
 					append!(ls, mv)
@@ -304,7 +304,7 @@ function main(args)
 			append!(gaps, mean(gs))
 
 
-			if it % 5 == 0
+			if it % 10 == 0
 				#if last_train_loss < losses[end]
 				Flux.adjust!(opt_st, ParameterSchedulers.next!(scheduler))
 			end
@@ -331,7 +331,7 @@ function main(args)
 				append!(ls_v, val)
 
 				if batch_size == 1 && !a_b
-					append!(vs_v, maximum(B.obj))
+					append!(vs_v, maximum(B.obj) * ϕ.rescaling_factor)
 					append!(gs_v, gap(maximum(B.obj) * ϕ.rescaling_factor, gold[idx]))
 					append!(vs_v_tI, maximum(B.obj[ B.lis[1:min(maxIt, maxItVal)]]))
 					append!(gs_v_tI, gap(maximum(B.obj[ B.lis[1:min(maxIt, maxItVal)]]) * ϕ.rescaling_factor, gold[idx]))
