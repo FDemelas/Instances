@@ -12,8 +12,7 @@ Create the features vector for a model of type `AttentionModelFactory` using the
 function create_features(lt::AttentionModelFactory, B::SoftBundle; auxiliary = 0)
 	t = sum(B.t)
 	obj = cpu(B.obj)
-	jθ = B.size == 1 ? 1 : B.size - 1
-	θ = cpu(B.θ)[1:jθ]
+	θ = cpu(B.θ)[1:end]
 	α = cpu(B.α[1:B.size])
 	i, s, e = 1, 1, length(B.w)
 	lp = sum(α[1:length(θ)]' * θ)
@@ -203,7 +202,7 @@ The inputs are:
 - `xt`: features of t;
 - `xγ`: features of the bundle component.
 """
-function (m::AttentionModel)(xt, xγ, idx, sizeB)
+function (m::AttentionModel)(xt, xγ, idx, comps)
 	# append the features for t and for γs
 	x = vcat(xt, xγ)
 
@@ -256,7 +255,7 @@ function (m::AttentionModel)(xt, xγ, idx, sizeB)
 
 	# compute the output to predict the new convex combination (after using it as input to a distribution function as softmax or sparsemax)
 	aq = device(size(hqi, 2) > 1 ? Flux.MLUtils.chunk(hqi, size(hqi, 2); dims = 2) : [hqi])
-	ak = (Flux.MLUtils.chunk(m.Ks[:, 1:sizeB], Int64(size(m.Ks, 1) / m.h_representation); dims = 1))
+	ak = (Flux.MLUtils.chunk(m.Ks[:, comps], Int64(size(m.Ks, 1) / m.h_representation); dims = 1))
 	γs = vcat(map((x, y) -> sum(x'y; dims = 1), aq, ak)...)
 
 	return t, γs

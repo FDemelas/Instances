@@ -338,13 +338,13 @@ function main(args)
 				if batch_size == 1 && !a_b
 					append!(vs_v, maximum(B.obj) * ϕ.rescaling_factor)
 					append!(gs_v, gap(maximum(B.obj) * ϕ.rescaling_factor, gold[idx]))
-					append!(vs_v_tI, maximum(B.obj[ B.lis[1:min(maxIt, maxItVal)]]))
-					append!(gs_v_tI, gap(maximum(B.obj[ B.lis[1:min(maxIt, maxItVal)]]) * ϕ.rescaling_factor, gold[idx]))
+					append!(vs_v_tI, maximum(B.obj[ 1:min(maxIt, maxItVal)]))
+					append!(gs_v_tI, gap(maximum(B.obj[1:min(maxIt, maxItVal)]) * ϕ.rescaling_factor, gold[idx]))
 				else
 					append!(vs_v, mean(maximum(B.obj[j, :]) * ϕ[j].rescaling_factor for j in eachindex(idx)))
 					append!(gs_v, mean([gap(maximum(B.obj[j, :]) * ϕ[j].rescaling_factor, gold[idx[j]]) for j in eachindex(idx)]))
-					append!(vs_v_tI, mean(maximum(B.obj[j, B.lis[1:min(maxIt, maxItVal)]]) * ϕ[j].rescaling_factor for j in eachindex(idx)))
-					append!(gs_v_tI, mean([gap(maximum(B.obj[j, B.lis[1:min(maxIt, maxItVal)]]) * ϕ[j].rescaling_factor, gold[idx[j]]) for j in eachindex(idx)]))
+					append!(vs_v_tI, mean(maximum(B.obj[j, 1:min(maxIt, maxItVal)]) * ϕ[j].rescaling_factor for j in eachindex(idx)))
+					append!(gs_v_tI, mean([gap(maximum(B.obj[j, 1:min(maxIt, maxItVal)]) * ϕ[j].rescaling_factor, gold[idx[j]]) for j in eachindex(idx)]))
 					first += batch_size
 					last += batch_size
 					last = min(last, mvi)
