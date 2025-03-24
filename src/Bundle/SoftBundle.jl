@@ -150,6 +150,7 @@ function bundle_execution(
 			# no Back-Propagation here
 			# create features and resize them properly
 			ignore_derivatives() do
+				B.size = Bsize[it]
 				xt, xγ = device(create_features(B.lt, B; auxiliary = featG))
 				if size(xt)[1] == length(xt)
 					xt = reshape(xt, (length(xt), 1))

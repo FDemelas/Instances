@@ -235,7 +235,7 @@ function main(args)
 		"BatchVersion_bs_" * string(batch_size) * "_" * string(a_b) * "_" * string(split(folder, "/")[end-1]) * "_" * string(lr) * "_" * string(decay) * "_" * string(cn) * "_" * string(mti) * "_" * string(mvi) * "_" * string(seed) * "_" * string(maxIt) *
 		"_" * string(maxEp) * "_" * string(soft_updates) * "_" *
 		string(h_representation) * "_" * string(sampling_θ) * "_" * string(h_act) * "_" * string(use_softmax) * "_" * string(gamma) * "_" * string(lambda) * "_" * string(delta) * "_" * string(distribution_function) * "_" * string(bgr) * "_" *
-		string(incremental)
+		string(incremental)*"_rc"*string(reduced_components)
 	sN = sum([1 for j in readdir("res") if contains(j, res_folder)]; init = 0.0)
 	res_folder = "res/" * res_folder * "_" * string(sN + 1)
 	mkdir(res_folder)
@@ -309,10 +309,10 @@ function main(args)
 			append!(gaps, mean(gs))
 
 
-			if it % 10 == 0
+#			if it % 10 == 0
 				#if last_train_loss < losses[end]
 				Flux.adjust!(opt_st, ParameterSchedulers.next!(scheduler))
-			end
+#			end
 
 
 			first = 1

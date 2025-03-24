@@ -1,4 +1,3 @@
-
 """
 BatchedSoftBundle structure.
 It works as SoftBundle structure, but allows to handle multiple bundle execution in parallel in order to perform batching.
@@ -39,7 +38,7 @@ The Bundle will be initialized to perform `maxIt` iterations (by default `10`).
 """
 function initializeBundle(bt::BatchedSoftBundleFactory, ϕs::Vector{<:AbstractConcaveFunction}, z::Vector{<:AbstractArray}, lt, maxIt::Int = 10, reduced_components::Bool = false)
 	# Construct Bundle structure
-	B = BatchedSoftBundle([], [], [], [-1], [], [], [], Inf, [Inf], [Float32[]], lt, [], 0, 0, [], 1, Dict(), maxIt, zeros(length(ϕs)), [], 1, [], reduced_components)
+	B = BatchedSoftBundle([], [], [], [-1], [], [], [], Inf, [Inf], [Float32[]], lt, [], 0, 0, [], 1, Dict(), maxIt, zeros(length(ϕs)), [], 1, [1], reduced_components)
 	# the batch size is equal to the number of input functions
 	batch_size = length(ϕs)
 	sLM = []
@@ -99,7 +98,7 @@ function reinitialize_Bundle!(B::BatchedSoftBundle)
 	# if reinitialize completely the bundle keeping only th e initialization point
 	B.li = 1
 	B.size = 1
-	B.lis = []
+	B.lis = [1]
 	B.s = ones(length(B.idxComp))
 	# reinitialize the gradient matrix, the visited point matrix, the linearization error matrix and the objective value matrix
 	B.G = Zygote.bufferfrom(device(hcat([B.G[:, 1], zeros(size(B.G, 1), B.maxIt)]...)))
@@ -161,6 +160,7 @@ function bundle_execution(
 			# initialization time
 			times["init"] = time() - t0
 			Bsize = Zygote.bufferfrom(Int64.(ones(maxIt + 1)))
+			lis = Zygote.bufferfrom([ones(Int64,it) for it in 1:maxIt])
 		end
 		for it in 1:maxIt
 			ignore_derivatives() do
@@ -266,9 +266,7 @@ function bundle_execution(
 				B.li = Bsize[it+1]
 			end
 
-			ignore_derivatives() do
-				append!(B.lis, B.li)
-			end
+			
 
 
 			# Store the time for value, gradient computation
