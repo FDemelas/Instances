@@ -16,8 +16,9 @@ include("../runs/readingFunctions.jl")
 function ep_train_and_val(
 	folder,
 	directory,
-	mti,
-	mvi,
+	dataset,
+	idxs_train,
+	idxs_val,
 	opt;
 	maxEP = 10,
 	maxIT = 50,
@@ -46,9 +47,6 @@ function ep_train_and_val(
 
 
 	lt = BundleNetworks.RnnTModelfactory()
-
-	idxs_train = collect(1:mti)
-	idxs_val = collect((mti+1):(mti+mvi))
 
 
 	f = open(location * "dataset.json", "w")
@@ -80,47 +78,6 @@ function ep_train_and_val(
 	nn_copy = nn
 	nn_best = deepcopy(nn)
 	obj_best = 0.0
-
-	dataset = []
-	gold = Dict()
-	if format == "dat"
-		tmp_idx = 0
-		for f in directory[1:(mti+mvi)]
-			ins = my_read_dat(folder * f)
-			ϕ = BundleNetworks.constructFunction(ins, 1.0)
-			_, g = BundleNetworks.value_gradient(ϕ, zeros(sizeK(ins), sizeV(ins)))
-			ϕ = BundleNetworks.constructFunction(ins, sqrt(sum(g .* g)))
-			push!(dataset, (f, ϕ))
-			tmp_idx += 1
-			if tmp_idx % 100 == 0
-				GC.gc()
-				#CUDA.reclaim()
-				#CUDA.free_memory()
-			end
-		end
-		gold_location = "./golds/" * split(folder, "/")[end-1] * "/gold.json"
-		f = JSON.open(gold_location, "r")
-		gold = JSON.parse(f)
-		close(f)
-
-	else
-		tmp_idx = 0
-		for f in directory[1:(mti+mvi)]
-			ins, Ld = my_read_dat_json(folder * f)
-			ϕ = BundleNetworks.constructFunction(ins, 1.0)
-			_, g = BundleNetworks.value_gradient(ϕ, zeros(sizeK(ins), sizeV(ins)))
-			ϕ = BundleNetworks.constructFunction(ins, sqrt(sum(g .* g)))
-			push!(dataset, (f, ϕ))
-			gold[f] = Ld
-			tmp_idx += 1
-			if tmp_idx % 100 == 0
-				GC.gc()
-				# CUDA.reclaim()
-				# CUDA.free_memory()
-			end
-		end
-
-	end
 
 	crs = Dict()
 	cr_duals = Dict()
@@ -331,6 +288,10 @@ function main(args)
 		arg_type = Bool
 		default = false
 		help = "Use constant t parameter, provided at the beginning of the training."
+		"--dataset_location"
+		arg_type = String
+		default = "-1"
+		help = "Location of the gold labels."
 	end
 
 	# take the input parameters and construct a Dictionary
@@ -352,6 +313,7 @@ function main(args)
 	γ = parsed_args["gamma"]
 	instance_features = parsed_args["instance_features"]
 	single_prediction = parsed_args["single_prediction"]
+	dataset_location = parsed_args["dataset_location"]
 	telescopic = γ == 0.0 ? false : true
 
 	directory = readdir(folder)
@@ -362,17 +324,72 @@ function main(args)
 		opt = Flux.OptimiserChain(Flux.Optimise.Adam(lr))
 	end
 
+
 	rng = Random.MersenneTwister(seed)
 	shuffle!(rng, directory)
+
+
+	idxs_train = collect(1:mti)
+	idxs_val = collect((mti+1):(mti+mvi))
+	datasets = Dict()
+	if dataset_location == "-1"
+		f = JSON.open("./dataset_" * split(split(data_name, "Results_")[end], "2")[1] * ".json", "r")
+		datasets = JSON.parse(f)
+		close(f)
+	else
+		datasets["training"] = directory[1:(mti)]
+		datasets["validation"] = directory[(mti+1):(mti+mvi)]
+	end
+	dataset = []
+	gold = Dict()
+	if format == "dat"
+		tmp_idx = 0
+		for set in [datasets["training"], datasets["validation"]]
+			for f in set
+				ins = my_read_dat(folder * f)
+				ϕ = BundleNetworks.constructFunction(ins, 1.0)
+				_, g = BundleNetworks.value_gradient(ϕ, zeros(sizeK(ins), sizeV(ins)))
+				ϕ = BundleNetworks.constructFunction(ins, sqrt(sum(g .* g)))
+				push!(dataset, (f, ϕ))
+				tmp_idx += 1
+				if tmp_idx % 100 == 0
+					GC.gc()
+				end
+			end
+		end
+		gold_location = "./golds/" * split(folder, "/")[end-1] * "/gold.json"
+		f = JSON.open(gold_location, "r")
+		gold = JSON.parse(f)
+		close(f)
+
+	else
+		tmp_idx = 0
+		for set in [datasets["training"], datasets["validation"]]
+			for f in set
+				ins, Ld = my_read_dat_json(folder * f)
+				ϕ = BundleNetworks.constructFunction(ins, 1.0)
+				_, g = BundleNetworks.value_gradient(ϕ, zeros(sizeK(ins), sizeV(ins)))
+				ϕ = BundleNetworks.constructFunction(ins, sqrt(sum(g .* g)))
+				push!(dataset, (f, ϕ))
+				gold[f] = Ld
+				tmp_idx += 1
+				if tmp_idx % 100 == 0
+					GC.gc()
+					# CUDA.reclaim()
+					# CUDA.free_memory()
+				end
+			end
+		end
+	end
+	mti,mvi=length(datasets["training"]),length(datasets["validation"])
+
 	res_folder =
 		"res_goldLossWeights_" * (instance_features ? "with" : "without") * "InstFeat_init" * (cr_init ? "CR" : "Zero") * "_lr" * string(lr) * "_cn" * string(cn) * "_maxIT" * string(maxIT) * "_maxEP" * string(maxEP) * "_data" *
 		string(split(folder, "/")[end-1]) * "_exactGrad" * string(exactGrad) * "_gamma" * string(γ) * "_seed" * string(seed) * "_single_prediction" * string(single_prediction)
 	sN = sum([1 for j in readdir("res") if contains(j, res_folder)]; init = 0.0)
 	location = "res/" * res_folder * "_" * string(sN) * "_" * "/"
 	mkdir(location)
-	#    f=open(location*"training.lab","w");println(f,directory[1:mti]);close(f);
-	#    f=open(location*"validation.lab","w");println(f,directory[(mti+1):(mti+mvi)]);close(f);
-	a = ep_train_and_val(folder, directory, mti, mvi, opt; maxIT, maxEP, location, cr_init, exactGrad, telescopic, γ, use_gold, instance_features, seed, single_prediction)
+	a = ep_train_and_val(folder, directory, dataset, idxs_train, idxs_val, opt; maxIT, maxEP, location, cr_init, exactGrad, telescopic, γ, use_gold, instance_features, seed, single_prediction)
 end
 
 
