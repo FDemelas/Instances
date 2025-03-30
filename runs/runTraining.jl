@@ -128,6 +128,10 @@ function main(args)
 		arg_type = Bool
 		default = false
 		help = "If true add a component to the bundle only if it was not visited a point with the same sub-gradient. Otherwhise not add the component, but update the associated values."
+		"--scheduling_ss"
+                arg_type = Int64
+                default = 10
+                help = ""
 	end
 
 	# take the input parameters and construct a Dictionary
@@ -155,6 +159,7 @@ function main(args)
 	batch_size = parsed_args["batch_size"]
 	incremental = parsed_args["incremental"]
 	a_b = parsed_args["always_batch"]
+	scheduling_ss = parsed_args["scheduling_ss"]
 	h_act = (parsed_args["h_act"] == "softplus") ? softplus : (parsed_args["h_act"] == "tanh" ? tanh : (parsed_args["h_act"] == "gelu" ? gelu : relu))
 	sampling_θ = parsed_args["sampling_gamma"]
 	reduced_components = parsed_args["reduced_components"]
@@ -235,7 +240,7 @@ function main(args)
 		"BatchVersion_bs_" * string(batch_size) * "_" * string(a_b) * "_" * string(split(folder, "/")[end-1]) * "_" * string(lr) * "_" * string(decay) * "_" * string(cn) * "_" * string(mti) * "_" * string(mvi) * "_" * string(seed) * "_" * string(maxIt) *
 		"_" * string(maxEp) * "_" * string(soft_updates) * "_" *
 		string(h_representation) * "_" * string(sampling_θ) * "_" * string(h_act) * "_" * string(use_softmax) * "_" * string(gamma) * "_" * string(lambda) * "_" * string(delta) * "_" * string(distribution_function) * "_" * string(bgr) * "_" *
-		string(incremental)*"_rc"*string(reduced_components)
+		string(incremental)*"_rc"*string(reduced_components)*"_ss"*string(scheduling_ss)
 	sN = sum([1 for j in readdir("res") if contains(j, res_folder)]; init = 0.0)
 	res_folder = "res/" * res_folder * "_" * string(sN + 1)
 	mkdir(res_folder)
@@ -309,10 +314,10 @@ function main(args)
 			append!(gaps, mean(gs))
 
 
-#			if it % 10 == 0
+			if it % scheduling_ss == 0
 				#if last_train_loss < losses[end]
 				Flux.adjust!(opt_st, ParameterSchedulers.next!(scheduler))
-#			end
+			end
 
 
 			first = 1
