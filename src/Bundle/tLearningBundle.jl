@@ -185,7 +185,6 @@ function Bundle_value_gradient!(B::DeepBundle, ϕ::AbstractConcaveFunction, samp
 		end
 
 		changed_s = false
-		println(B.obj[B.li], " ", old_objS, " ", B.params.m1 * B.objB)
 		if B.obj[B.li] - old_objS > B.params.m1 * B.objB
 			B.CSS += 1
 			B.CNS = 0
@@ -200,7 +199,6 @@ function Bundle_value_gradient!(B::DeepBundle, ϕ::AbstractConcaveFunction, samp
 			B.CSS = 0
 		end
 
-		println("epoch number ", epoch, " optimal LR: ", objS(B), " cuurent LR: $(obj) Bundle Size ", size_Bundle(B)[1], " step t ", B.params.t)
 
 		push!(B.ws, B.w)
 		push!(B.θ2s, θ2(B))
@@ -224,7 +222,7 @@ The function that computes the forward and stock the information usefull for the
 """
 function train!(B::DeepBundle, ϕ, state; samples = 1, telescopic = false, γ = 0.9, δ = 0.00001, normalization_factor = 1, oneshot = true, gold = zeros(1), single_prediction::Bool = false)
 	sample = B.nn.sample
-	par = Flux.params(B.nn)
+	par = Flux.trainable(B.nn)
 	z0 = zS(B)
 
 	t = B.params.t
@@ -233,7 +231,6 @@ function train!(B::DeepBundle, ϕ, state; samples = 1, telescopic = false, γ = 
 	#state = B.nn.model.layers[1].state
 	Flux.reset!(B.nn)
 	rng = B.nn.rng
-	println("Stocking Bundle execution data")
 	Bundle_value_gradient!(B, ϕ, sample)
 
 	ϵs = B.nn.ϵs
@@ -249,7 +246,6 @@ function train!(B::DeepBundle, ϕ, state; samples = 1, telescopic = false, γ = 
 			end
 
 			B.params.t = t
-			println(first_run)
 			#dev = zeros(size(B.ws[1]))
 			fs = 1
 			#ϵ = sample ? ϵs[1] : 0
@@ -264,21 +260,18 @@ function train!(B::DeepBundle, ϕ, state; samples = 1, telescopic = false, γ = 
 
 			ϵs = vcat([1], ϵs)
 
-			println("Forward Backward phase")
 			if B.back_prop_idx != []
 				if !telescopic
 					v, grad = withgradient((m) -> -1 / normalization_factor * (#δ*ns_contribution(B,pred,[B.nn(B.features[i], B, sample ? ϵs[i] : 0) for i in eachindex(B.ws)],ϕ))
-							+ ϕ(reshape(
+							+ϕ(reshape(
 								z0 + sum([ws(m(B.features[i], B, sample ? ϵs[i] : 0), i, B) for i in eachindex(B.features)][B.back_prop_idx]), sizeInputSpace(ϕ)))), B.nn)
 				else
 					v, grad = withgradient((m) -> -1 / normalization_factor * (both_contributions(B, pred, [m(B.features[i], B, sample ? ϵs[i] : 0) for i in eachindex(B.ws)], ϕ, γ, δ)), B.nn)
 				end
 			else
-				v, grad = withgradient((m) ->- 1 / normalization_factor * (both_contributions(B, pred, [m(B.features[i], B, sample ? ϵs[i] : 0) for i in eachindex(B.ws)], ϕ, γ, δ)), B.nn)
+				v, grad = withgradient((m) -> -1 / normalization_factor * (both_contributions(B, pred, [m(B.features[i], B, sample ? ϵs[i] : 0) for i in eachindex(B.ws)], ϕ, γ, δ)), B.nn)
 			end
 			Flux.update!(state, B.nn, grad[1])
-			println("starting value ", ϕ(reshape(z0, sizeInputSpace(ϕ))))
-			println("loss value ", -v)
 			first_sample = false
 		end
 		B.nn.ϵs = []
@@ -304,4 +297,96 @@ function both_contributions(B, pred, ts, ϕ, γ = 0.1, δ = 0.00001)
 	loss_values_ns = [ϕ(reshape(sum(wss[:, i] for i in 1:ss_ns[j]) + wss[:, j], sizeInputSpace(ϕ))) for j in eachindex(ns)]
 	loss_values_ss = [ϕ(reshape(sum(wss[:, i] for i in ss[1:j]), sizeInputSpace(ϕ))) for j in eachindex(ss)]
 	return δ * sum(vcat(loss_values_ns, 0.0)) + sum(vcat(γs .* loss_values_ss, 0.0))
+end
+
+"""
+Main function for the Bundle.
+It maximize the function `ϕ` using the bundle method, with a previously initialized bundle `B`.
+It has two additional input parameters:
+- `t_strat`: the t-Strategy, by default it is the contant t-strategy (i.e. the regularization parameter for the Dual Master Problem is always keeped fixed).
+- `unstable`: if `true` we always change the stabilization point using the last visited point, by default `false` (change it only if you know what you are doing).
+"""
+function bundle_execution(B::DeepBundle, ϕ::AbstractConcaveFunction; t_strat::abstract_t_strategy = constant_t_strategy(), unstable::Bool = false, force_maxIt::Bool = true, inference::Bool = false)
+	times = Dict("times" => [], "trial point" => [], "ϕ" => [], "update β" => [], "SS/NS" => [], "update DQP" => [], "solve DQP" => [], "remove outdated" => [])
+	ignore_derivatives() do
+		t0 = time()
+	end
+	for epoch in 1:B.params.maxIt
+		ignore_derivatives() do
+			t1 = time()
+		end
+		# compute the new trial point
+		z = trial_point(B)
+		ignore_derivatives() do
+			append!(times["trial point"], (time() - t1))
+			t0 = time()
+		end
+		t0 = time()
+		# compute the objective value and sub-gradient in the new trial-point
+		obj, g = value_gradient(ϕ, z) # to optimize
+		ignore_derivatives() do
+			append!(times["ϕ"], (time() - t0))
+			t0 = time()
+			# update the bundle with the new information
+			update_Bundle(B, z, g, obj)
+		end
+
+		# memorize the new regularization parameter
+		t = B.params.t
+		# memorize the current stabilization point
+		s = B.s
+		# update the regularization parameter and the stabilization point
+		t_strategy(B, B.li, t_strat, unstable)
+
+		ignore_derivatives() do
+			append!(times["update β"], (time() - t0))
+
+			t0 = time()
+			#update the Dual Master Problem
+			update_DQP!(B, t == B.params.t, s == B.s)
+			append!(times["update DQP"], (time() - t0))
+
+			t0 = time()
+			#solve the Dual Master Problem
+			solve_DQP(B) # to optimize
+			append!(times["solve DQP"], (time() - t0))
+
+			# Update the Dual Master problem solution and compute the new trial direction
+			compute_direction(B)
+		end
+		B.w = ws()
+		# remove outdated components, i.e. bundle components that are not used for many iterations
+		ignore_derivatives() do
+			t0 = time()
+			if epoch >= B.params.remotionStep
+				#remove_outdated(B)
+			end
+			append!(times["remove outdated"], (time() - t0))
+			append!(B.ts, B.params.t)
+		end
+		# check the stopping criteria and if it is satisfied stop the execution
+		# if force_maxIt is true than we force the algorithm to attain the maximum iterations
+		# and no further stopping criteria is considered 
+		ignore_derivatives() do
+			if inference && !(force_maxIt) && stopping_criteria(B)
+				println("Satisfied stopping criteria")
+				return true, times
+			end
+		end
+		ignore_derivatives() do
+			push!(B.memorized["times"], time() - t1)
+		end
+	end
+	ignore_derivatives() do
+		times["times"] = B.memorized["times"]
+	end
+	if inference
+		ignore_derivatives() do
+			return false, times
+		end
+	else
+		return both_contributions()
+
+
+	end
 end
