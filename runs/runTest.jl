@@ -29,6 +29,17 @@ function main(args)
 		arg_type = String
 		default = "BatchVersion_bs_1_true_MCNDsmallCom40_1.0e-6_0.9_5_200_200_1_10_49_true_128_false_softplus_false_0.999_0.0_0.0_sparsemax_false_false_3.0"
 		help = "optimizer for the training"
+                "--name"
+                arg_type = String
+                default = "1"
+                help = "optimizer for the training"
+                arg_type = String
+                default = "BatchVersion_bs_1_true_MCNDsmallCom40_1.0e-6_0.9_5_200_200_1_10_49_true_128_false_softplus_false_0.999_0.0_0.0_sparsemax_false_false_3.0"
+                "--dataset_folder"
+		help = "optimizer for the training"
+                arg_type = String
+                default = "-1"
+                help = "optimizer for the training"
 	end
 
 	# take the input parameters and construct a Dictionary
@@ -36,9 +47,11 @@ function main(args)
 
 	folder = parsed_args["folder"]
 	model_folder = parsed_args["model_folder"]
+	name = parsed_args["name"]
+	dataset_folder = parsed_args["dataset_folder"] == "-1" ? parsed_args["model_folder"] : parsed_args["dataset_folder"]
 
 
-	Js = [1000] # [10,25,50,100]
+	Js = [250] # [10,25,50,100]
 	res = Dict("times" => Dict(j => Dict() for j in Js), "objs" => Dict())
 	@load "res/$(model_folder)/nn_best.bson" nn_best
 
@@ -49,8 +62,9 @@ function main(args)
 	nn.decoder_γk = gpu(nn.decoder_γk)
 	nn.decoder_γq = gpu(nn.decoder_γq)
 	nn=gpu(nn)
-
-	dataset_path = "res/$(model_folder)/dataset.json"
+	nn.sample_γ=false
+	nn.sample_t=false
+	dataset_path = "res/$(dataset_folder)/dataset.json"
 	f = JSON.open(dataset_path, "r")
 	dataset = JSON.parse(f)
 	close(f)
@@ -84,15 +98,15 @@ function main(args)
 
 			v, times = BundleNetworks.bundle_execution(B, ϕ, nn; soft_updates = soft_updates, λ = 0.0, γ = 0.0, δ = 0.0, distribution_function = BundleNetworks.sparsemax, verbose = 0, inference = true)
 			res["times"][j][idx] = times
-			res["objs"][idx] = reshape(B.obj[B.lis], :) .* ϕ[1].rescaling_factor
-			println(v, " ", maximum(reshape(B.obj[B.lis], :)))
+			res["objs"][idx] = reshape(B.obj[1:B.li], :) .* ϕ[1].rescaling_factor
+			println(v, " ", maximum(reshape(B.obj[1:B.li], :)))
 
 
 		end
 	end
 
 
-	f = open("ResultsTest1000_$(split(folder,"/")[end-1]).json", "w")
+	f = open("Results_$(name)_$(split(folder,"/")[end-1]).json", "w")
 	JSON.print(f, cpu(res))
 	close(f)
 end

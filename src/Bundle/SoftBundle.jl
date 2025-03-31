@@ -188,7 +188,7 @@ function bundle_execution(
 			end
 
 			# Compute a simplex vector using the output γs[it] of the model
-			θ[it] = distribution_function(γs[it][:, comps[it][min_idx:end]]; dims = 2)
+			θ[it] = distribution_function(γs[it][:, :]; dims = 2)
 
 			# store it for featurers extraction and store also the time used for computing this simplex vector
 			ignore_derivatives() do
@@ -201,7 +201,7 @@ function bundle_execution(
 			end
 
 			# Compute the new trial direction as convex combination of the gradients in the Bundle
-			w[it] = B.G[:, comps[it][min_idx:end]] * θ[it][1, :]
+			w[it] = B.G[:, comps[it]] * θ[it][1, :]
 
 			# Store this direction for features extraction and store the time to compute that convex combination
 			ignore_derivatives() do
@@ -241,13 +241,17 @@ function bundle_execution(
 			B.li = B.size
 			if B.reduced_components
 				already_in = false
+				j=[]
 				for i in comps[it]
 					if sum(B.G[:, i] - g[:]) < 1.0e-6
 						already_in = true
+						ignore_derivatives() do
+                                                        push!(j,i)
+                                                end
 					end
 				end
 				if already_in
-					comps[it+1] = comps[it]
+					comps[it+1] = vcat([k for k in comps[it] if !(k in j)],B.size)
 				else
 					comps[it+1] = vcat(comps[it],B.size)
 				end

@@ -332,8 +332,8 @@ function main(args)
 	idxs_train = collect(1:mti)
 	idxs_val = collect((mti+1):(mti+mvi))
 	datasets = Dict()
-	if dataset_location == "-1"
-		f = JSON.open("./dataset_" * split(split(data_name, "Results_")[end], "2")[1] * ".json", "r")
+	if !(dataset_location == "-1")
+		f = JSON.open(dataset_location, "r")
 		datasets = JSON.parse(f)
 		close(f)
 	else
@@ -342,6 +342,9 @@ function main(args)
 	end
 	dataset = []
 	gold = Dict()
+	 format = split(directory[1], ".")[end]
+
+
 	if format == "dat"
 		tmp_idx = 0
 		for set in [datasets["training"], datasets["validation"]]
