@@ -382,7 +382,7 @@ function main(args)
 		end
 	end
 	mti,mvi=length(datasets["training"]),length(datasets["validation"])
-
+	idxs_train,idxs_val=collect(1:mti),collect((mti+1):(mti+mvi))
 	res_folder =
 		"res_goldLossWeights_" * (instance_features ? "with" : "without") * "InstFeat_init" * (cr_init ? "CR" : "Zero") * "_lr" * string(lr) * "_cn" * string(cn) * "_maxIT" * string(maxIT) * "_maxEP" * string(maxEP) * "_data" *
 		string(split(folder, "/")[end-1]) * "_exactGrad" * string(exactGrad) * "_gamma" * string(γ) * "_seed" * string(seed) * "_single_prediction" * string(single_prediction)
