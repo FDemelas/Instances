@@ -17,6 +17,7 @@ function ep_train_and_val(
 	folder,
 	directory,
 	dataset,
+	gold,
 	idxs_train,
 	idxs_val,
 	opt;
@@ -392,7 +393,7 @@ function main(args)
 	sN = sum([1 for j in readdir("res") if contains(j, res_folder)]; init = 0.0)
 	location = "res/" * res_folder * "_" * string(sN) * "_" * "/"
 	mkdir(location)
-	a = ep_train_and_val(folder, directory, dataset, idxs_train, idxs_val, opt; maxIT, maxEP, location, cr_init, exactGrad, telescopic, γ, use_gold, instance_features, seed, single_prediction)
+	a = ep_train_and_val(folder, directory, dataset, gold, idxs_train, idxs_val, opt; maxIT, maxEP, location, cr_init, exactGrad, telescopic, γ, use_gold, instance_features, seed, single_prediction)
 end
 
 
