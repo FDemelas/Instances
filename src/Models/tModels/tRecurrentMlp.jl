@@ -30,54 +30,114 @@ function create_features(B::DualBundle, _::RnnTModel)
 	return reshape(φ,(length(φ),1))
 end
 
+#"""
+#Creates the features for the current iteration.
+#"""
+#function features_vector_i(B::DualBundle)
+#	g = gS(B)
+#	α = αS(B)
+#	αl = B.α[B.li]
+#	w = B.w
+#	z = zS(B)
+#	realObj = B.obj[B.li]
+#	sObj = objS(B)
+#	approxObj = B.objB
+#	αs = B.α[1:min(length(B.θ), B.size)]
+#	ϕ = Float32[B.params.t,
+#		B.size/B.params.maxIt,
+#		B.CSS/B.params.maxIt,
+#		B.CNS/B.params.maxIt,
+#		B.s==B.li,
+#		realObj<sObj,
+#		realObj<sObj,
+#		sqrt(w' * w)/2<sum(αs' * B.θ),
+#		B.params.t*sqrt(w' * w)/2<sum(αs' * B.θ),
+#		sign(realObj),
+#		sign(sObj),
+#		sign(approxObj),
+#		log(1+abs(realObj)),
+#		log(1+abs(sObj)),
+#		log(1+abs(approxObj)),
+#		sObj-realObj <= approxObj,
+#		log(1+α),
+#		log(1+αl),
+#		log(1+maximum(B.α)),
+#		log(1+B.z[:, B.li]' * B.z[:, B.li]),
+#		log(1+z' * z), 
+#		log(1+g' * g),
+#		log(1+B.G[:, B.li]' * B.G[:, B.li]),
+#		log(1+w' * w),
+#		log(1+B.params.t * w' * w), 
+#		log(1+sum(αs' * B.θ)),
+#		B.params.t*B.params.t_incr<B.params.t_max]
+#	return ϕ
+#end
+#
+#
+
 """
-Creates the features for the current iteration.
+Create the features vector for a model of type `AttentionModelFactory` using the informations contained in the bundle `B`.
+`B` should be of type `DualBundle`.
 """
 function features_vector_i(B::DualBundle)
-	g = gS(B)
-	α = αS(B)
-	αl = B.α[B.li]
-	w = B.w
-	z = zS(B)
-	realObj = B.obj[B.li]
-	sObj = objS(B)
-	approxObj = B.objB
-	αs = B.α[1:min(length(B.θ), B.size)]
-	ϕ = Float32[B.params.t,
-		B.size/B.params.maxIt,
-		B.CSS/B.params.maxIt,
-		B.CNS/B.params.maxIt,
-		B.s==B.li,
-		realObj<sObj,
-		realObj<sObj,
-		sqrt(w' * w)/2<sum(αs' * B.θ),
-		B.params.t*sqrt(w' * w)/2<sum(αs' * B.θ),
-		sign(realObj),
-		sign(sObj),
-		sign(approxObj),
-		log(1+abs(realObj)),
-		log(1+abs(sObj)),
-		log(1+abs(approxObj)),
-		sObj-realObj <= approxObj,
-		log(1+α),
-		log(1+αl),
-		log(1+maximum(B.α)),
-		log(1+B.z[:, B.li]' * B.z[:, B.li]),
-		log(1+z' * z), 
-		log(1+g' * g),
-		log(1+B.G[:, B.li]' * B.G[:, B.li]),
-		log(1+w' * w),
-		log(1+B.params.t * w' * w), 
-		log(1+sum(αs' * B.θ)),
-		B.params.t*B.params.t_incr<B.params.t_max]
+	t = sum(B.t)
+	obj = B.obj
+	θ = B.θ[1:end]
+	α = B.α[1:min(length(B.θ), B.size)]
+	i, s, e = 1, 1, length(B.w)
+	lp = sum(α[1:length(θ)]' * θ)
+	qp = sum(B.w' * B.w)
+
+	zz = B.z[:, :]' * B.z[:, B.size]
+	zsz = B.z[:, :]' * B.z[:, B.s]
+	gg = B.G[:, :]' * B.G[:, B.size]
+	gsg = B.G[:, :]' * B.G[:, B.s]
+
+	ϕ = Float32[t,
+		qp,
+		t*qp,
+		lp,
+		qp>lp,
+		10000*qp>lp,
+		obj[B.li],
+		obj[B.s],
+		obj[B.li]<obj[B.s],
+		B.li,
+		α[B.s],
+		α[B.li],
+		sum(sqrt(zz[B.li]) / 2),
+		sum(sqrt(zsz[B.s]) / 2),
+		sum(sqrt(gsg[B.s]) / 2),
+		sum(sqrt(gg[B.li]) / 2),
+		mean(B.G[:, B.li]),
+		mean(B.z[:, B.li]),
+		std(B.G[:, B.li]),
+		std(B.z[:, B.li]),
+		minimum(B.G[:, B.li]),
+		minimum(B.z[:, B.li]),
+		maximum(B.G[:, B.li]),
+		maximum(B.z[:, B.li]),
+		minimum(zz),
+		minimum(zsz),
+		minimum(gsg),
+		minimum(gg),
+		B.G[:, B.li]'*B.w,
+		maximum(zz),
+		maximum(zsz),
+		maximum(gsg),
+		maximum(gg),
+		B.G[:, B.s]'*B.w,
+		α[B.li],
+		obj[B.li]]
 	return ϕ
 end
+
 
 """
 Returns the size of the features for the model. The input is the model itself.
 """
 function size_features(_::RnnTModel)
-	return 47
+	return 36
 end
 
 
@@ -85,7 +145,7 @@ end
 Returns the size of the features for the model. The input is the model factory.
 """
 function size_features(_::RnnTModelfactory)
-	return 47
+	return 36
 end
 
 """
