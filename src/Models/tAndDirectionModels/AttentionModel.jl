@@ -216,7 +216,7 @@ function (m::AttentionModel)(xt, xγ, idx, comps)
 	σ2 = -6.0f0 .+ softplus.(σ2 .+ 6.0f0)
 	σ2 = exp.(σ2)
 	sigma = sqrt.(σ2 .+ 1)
-	ϵ = randn(m.rng, Float32, size(μ))
+	ϵ = device(randn(m.rng, Float32, size(μ)))
 
 	# sample the hidden representation of t and then give it as input to the decoder to compute t
 	t = m.decoder_t(m.sample_t ? μ .+ ϵ .* sigma : μ)
