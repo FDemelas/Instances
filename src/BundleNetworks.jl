@@ -43,6 +43,7 @@ include("Bundle/BatchedSoftBundle.jl")
 include("Models/tAndDirectionModels/AttentionModel.jl")
 
 include("Models/tModels/tRecurrentMlp.jl")
+include("Models/tModels/tRecurrentMlp2.jl")
 
 include("Bundle/DualBundle.jl")
 include("Bundle/VanillaBundle.jl")

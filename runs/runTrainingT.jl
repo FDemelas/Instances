@@ -37,7 +37,7 @@ function ep_train_and_val(
 	use_gold = true,
 	instance_features = false,
 	seed = 1,
-	single_prediction::Bool = false,
+	single_prediction::Bool = false
 )
 
 
@@ -45,9 +45,6 @@ function ep_train_and_val(
 	device = cpu
 
 	format = split(directory[1], ".")[end]
-
-
-	lt = BundleNetworks.RnnTModelfactory()
 
 
 	f = open(location * "dataset.json", "w")
@@ -293,6 +290,10 @@ function main(args)
 		arg_type = String
 		default = "-1"
 		help = "Location of the gold labels."
+		"--sample_inside"
+		arg_type = Bool
+		default = true
+		help = "Sample inside the model, if true, or in the output space, if false."
 	end
 
 	# take the input parameters and construct a Dictionary
@@ -315,6 +316,7 @@ function main(args)
 	instance_features = parsed_args["instance_features"]
 	single_prediction = parsed_args["single_prediction"]
 	dataset_location = parsed_args["dataset_location"]
+	sample_inside = parsed_args["sample_inside"]
 	telescopic = γ == 0.0 ? false : true
 
 	directory = readdir(folder)
@@ -324,11 +326,11 @@ function main(args)
 	else
 		opt = Flux.OptimiserChain(Flux.Optimise.Adam(lr))
 	end
-
+	
+	lt = sample_inside ? RnnTModelSampleInsidefactory() : RnnTModelfactory()
 
 	rng = Random.MersenneTwister(seed)
 	shuffle!(rng, directory)
-
 
 	idxs_train = collect(1:mti)
 	idxs_val = collect((mti+1):(mti+mvi))
@@ -344,7 +346,6 @@ function main(args)
 	dataset = []
 	gold = Dict()
 	 format = split(directory[1], ".")[end]
-
 
 	if format == "dat"
 		tmp_idx = 0
@@ -389,11 +390,11 @@ function main(args)
 	idxs_train,idxs_val=collect(1:mti),collect((mti+1):(mti+mvi))
 	res_folder =
 		"res_goldLossWeights_" * (instance_features ? "with" : "without") * "InstFeat_init" * (cr_init ? "CR" : "Zero") * "_lr" * string(lr) * "_cn" * string(cn) * "_maxIT" * string(maxIT) * "_maxEP" * string(maxEP) * "_data" *
-		string(split(folder, "/")[end-1]) * "_exactGrad" * string(exactGrad) * "_gamma" * string(γ) * "_seed" * string(seed) * "_single_prediction" * string(single_prediction)
-	sN = sum([1 for j in readdir("res") if contains(j, res_folder)]; init = 0.0)
-	location = "res/" * res_folder * "_" * string(sN) * "_" * "/"
+		string(split(folder, "/")[end-1]) * "_exactGrad" * string(exactGrad) * "_gamma" * string(γ) * "_seed" * string(seed) * "_single_prediction" * string(single_prediction)*"_sampleInside"*string(sample_inside)
+	sN = sum([1 for j in readdir("resLogs") if contains(j, res_folder)]; init = 0.0)
+	location = "resLogs/" * res_folder * "_" * string(sN) * "_" * "/"
 	mkdir(location)
-	a = ep_train_and_val(folder, directory, dataset, gold, idxs_train, idxs_val, opt; maxIT, maxEP, location, cr_init, exactGrad, telescopic, γ, use_gold, instance_features, seed, single_prediction)
+	a = ep_train_and_val(folder, directory, dataset, gold, idxs_train, idxs_val, opt; maxIT, maxEP, location, cr_init, exactGrad, telescopic, γ, use_gold, instance_features, seed, single_prediction,lt)
 end
 
 
