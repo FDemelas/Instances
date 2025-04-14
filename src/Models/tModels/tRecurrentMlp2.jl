@@ -25,7 +25,7 @@ Creates the features vector for the current bundle.
 """
 function create_features(B::DualBundle, _::RnnTModelSampleInside)
 	# append the initial features and the ones of the current iterations
-	φ=vcat(B.ϕ0, features_vector_i(B))
+	φ=features_vector_i(B)
 	# reshape of a proper dimension
 	return reshape(φ,(length(φ),1))
 end
@@ -34,7 +34,7 @@ end
 Returns the size of the features for the model. The input is the model itself.
 """
 function size_features(_::RnnTModelSampleInside)
-	return 36
+	return 34
 end
 
 
@@ -42,7 +42,7 @@ end
 Returns the size of the features for the model. The input is the model factory.
 """
 function size_features(_::RnnTModelSampleInsidefactory)
-	return 36
+	return 34
 end
 
 """
@@ -103,7 +103,7 @@ function create_NN(lt::RnnTModelSampleInsidefactory,recurrent_layer=LSTM, h_deco
 	encoder_layer = recurrent_layer(size_features(lt) => 2*h_representation)
 
 	# decoder composed by a Multi-Layer Perceptron
-	i_decoder_layer = Dense(2*h_representation => h_decoder[1], h_act; init)
+	i_decoder_layer = Dense(h_representation => h_decoder[1], h_act; init)
 	h_decoder_layers = [Dense(h_decoder[i] => h_decoder[i+1], h_act; init) for i in 1:length(h_decoder)-1]
 	o_decoder_layers = Dense(h_decoder[end] => size_output(lt),softplus; init)
 	decoder = Chain(i_decoder_layer, h_decoder_layers..., o_decoder_layers)

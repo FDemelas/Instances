@@ -25,7 +25,7 @@ Creates the features vector for the current bundle.
 """
 function create_features(B::DualBundle, _::RnnTModel)
 	# append the initial features and the ones of the current iterations
-	φ=vcat(B.ϕ0, features_vector_i(B))
+	φ= features_vector_i(B)
 	# reshape of a proper dimension
 	return reshape(φ,(length(φ),1))
 end
@@ -80,7 +80,7 @@ Create the features vector for a model of type `AttentionModelFactory` using the
 `B` should be of type `DualBundle`.
 """
 function features_vector_i(B::DualBundle)
-	t = sum(B.t)
+	t = sum(B.params.t)
 	obj = B.obj
 	θ = B.θ[1:end]
 	α = B.α[1:min(length(B.θ), B.size)]
@@ -88,10 +88,13 @@ function features_vector_i(B::DualBundle)
 	lp = sum(α[1:length(θ)]' * θ)
 	qp = sum(B.w' * B.w)
 
-	zz = B.z[:, :]' * B.z[:, B.size]
+	zz = B.z[:, :]' * B.z[:, B.li]
 	zsz = B.z[:, :]' * B.z[:, B.s]
-	gg = B.G[:, :]' * B.G[:, B.size]
+	gg = B.G[:, :]' * B.G[:, B.li]
 	gsg = B.G[:, :]' * B.G[:, B.s]
+
+	realObj = B.obj[B.li]
+       sObj = objS(B)
 
 	ϕ = Float32[t,
 		qp,
@@ -99,12 +102,12 @@ function features_vector_i(B::DualBundle)
 		lp,
 		qp>lp,
 		10000*qp>lp,
-		obj[B.li],
-		obj[B.s],
-		obj[B.li]<obj[B.s],
+		realObj,
+		sObj,
+		realObj<sObj,
 		B.li,
-		α[B.s],
-		α[B.li],
+		0.0,
+		B.α[B.li],
 		sum(sqrt(zz[B.li]) / 2),
 		sum(sqrt(zsz[B.s]) / 2),
 		sum(sqrt(gsg[B.s]) / 2),
@@ -126,10 +129,9 @@ function features_vector_i(B::DualBundle)
 		maximum(zsz),
 		maximum(gsg),
 		maximum(gg),
-		B.G[:, B.s]'*B.w,
-		α[B.li],
-		obj[B.li]]
-	return ϕ
+		B.G[:, B.s]'*B.w
+		]
+	return reshape(ϕ,:)
 end
 
 
@@ -137,7 +139,7 @@ end
 Returns the size of the features for the model. The input is the model itself.
 """
 function size_features(_::RnnTModel)
-	return 36
+	return 34
 end
 
 
@@ -145,7 +147,7 @@ end
 Returns the size of the features for the model. The input is the model factory.
 """
 function size_features(_::RnnTModelfactory)
-	return 36
+	return 34
 end
 
 """
