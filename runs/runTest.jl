@@ -40,6 +40,10 @@ function main(args)
                 arg_type = String
                 default = "-1"
                 help = "optimizer for the training"
+		"--iterations"
+		arg_type = Int64
+		help = "Maximum number of optimizer iterations"
+		default = 250
 	end
 
 	# take the input parameters and construct a Dictionary
@@ -51,8 +55,9 @@ function main(args)
 	dataset_folder = parsed_args["dataset_folder"] == "-1" ? parsed_args["model_folder"] : parsed_args["dataset_folder"]
 
 
-	Js = [250] # [10,25,50,100]
-	res = Dict("times" => Dict(j => Dict() for j in Js), "objs" => Dict())
+	maxIt = parsed_args["iterations"]
+
+	res = Dict("times" => Dict(), "objs" => Dict())
 	@load "res/$(model_folder)/nn_best.bson" nn_best
 
 	global nn = (nn_best)
@@ -73,10 +78,8 @@ function main(args)
 
 	directory = readdir(folder)
 	format = split(directory[1], ".")[end]
-	maxIt = maximum(Js) + 1
 	soft_updates = true
-	for j in Js # [10,25,50,1000]
-		for idx in dataset["test"]
+	for idx in dataset["test"]
 			# dataset["training"]                
 			ins = []
 			if format == "json"
@@ -89,20 +92,15 @@ function main(args)
 			ϕ = [BundleNetworks.constructFunction(ins, sqrt(sum(g .* g)))]
 			B = BundleNetworks.initializeBundle(BundleNetworks.BatchedSoftBundleFactory(), ϕ, [zeros(sizeK(ins) * sizeV(ins))], factory, maxIt + 1)
 
-
-			B.maxIt = maxIt
-			BundleNetworks.reset!(nn, 1, j)
+			B.maxIt = maxIt+1
+			BundleNetworks.reset!(nn, 1, maxIt+1)
 			mv = 0.0
-			B.maxIt = j
 			BundleNetworks.reinitialize_Bundle!(B)
-
+			B.maxIt = maxIt
 			v, times = BundleNetworks.bundle_execution(B, ϕ, nn; soft_updates = soft_updates, λ = 0.0, γ = 0.0, δ = 0.0, distribution_function = BundleNetworks.sparsemax, verbose = 0, inference = true)
-			res["times"][j][idx] = times
+			res["times"][idx] = times
 			res["objs"][idx] = reshape(B.obj[1:B.li], :) .* ϕ[1].rescaling_factor
 			println(v, " ", maximum(reshape(B.obj[1:B.li], :)))
-
-
-		end
 	end
 
 

@@ -327,7 +327,7 @@ function main(args)
 		opt = Flux.OptimiserChain(Flux.Optimise.Adam(lr))
 	end
 	
-	lt = sample_inside ? RnnTModelSampleInsidefactory() : RnnTModelfactory()
+	lt = sample_inside ? BundleNetworks.RnnTModelSampleInsidefactory() : RnnTModelfactory()
 
 	rng = Random.MersenneTwister(seed)
 	shuffle!(rng, directory)

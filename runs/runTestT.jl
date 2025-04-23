@@ -108,7 +108,7 @@ function test_model(
 		res[f]["gaps"] = [gap(i, gold[idx_i]) for i in res[f]["objs"]]
 		GC.gc()
 	end
-	f = open("res_test_$(split(folder,"/")[end-1]).json", "w")
+	f = open("res_test2_$(split(folder,"/")[end-1]).json", "w")
 	JSON.print(f, res)
 	close(f)
 
@@ -149,7 +149,7 @@ function main(args)
 	@load "$(model_path)/nn_bestLV.bson" nn_best
 
 	global nn = (nn_best)
-
+	nn.sample=false
 	f = open(dataset_path * "dataset.json", "r")
 	dataset = JSON.parse(f)["test"]
 	close(f)

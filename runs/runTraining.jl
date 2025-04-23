@@ -124,6 +124,10 @@ function main(args)
 		arg_type = Bool
 		default = false
 		help = "sample in the latent space to predicts keys and queries used to compute theta and then the coefficients thetas of the convex combination."
+		 "--sampling_t"
+                arg_type = Bool
+                default = true
+                help = "sample in the parameter t"
 		"--reduced_components"
 		arg_type = Bool
 		default = false
@@ -162,6 +166,8 @@ function main(args)
 	scheduling_ss = parsed_args["scheduling_ss"]
 	h_act = (parsed_args["h_act"] == "softplus") ? softplus : (parsed_args["h_act"] == "tanh" ? tanh : (parsed_args["h_act"] == "gelu" ? gelu : relu))
 	sampling_θ = parsed_args["sampling_gamma"]
+	sampling_t = parsed_args["sampling_t"]
+
 	reduced_components = parsed_args["reduced_components"]
 	distribution_function = use_softmax ? softmax : (BundleNetworks.sparsemax)
 	rng = Random.MersenneTwister(seed)
@@ -169,7 +175,7 @@ function main(args)
 	format = split(directory[1], ".")[end]
 
 	factory = bgr ? BundleNetworks.AttentionModelFactory() : BundleNetworks.AttentionModelFactory()
-	global nn = BundleNetworks.create_NN(factory; h_representation, h_act, sampling_θ)
+	global nn = BundleNetworks.create_NN(factory; h_representation, h_act, sampling_θ,sampling_t)
 	nn.h_representation = BundleNetworks.h_representation(nn)
 	BundleNetworks.reset!(nn, batch_size)
 	use_gpu = true
@@ -224,6 +230,9 @@ function main(args)
 	idxs_v = collect((mti+1):(mti+mvi))
 	idxs_test = collect((mti+mvi+1):length(directory))
 	global nn_best = deepcopy(nn)
+	global nn_val = deepcopy(nn)
+	nn_val.sample_t = false
+	nn_val.sample_γ = false
 	results = Dict("training" => Dict(), "validation" => Dict(), "test" => Dict())
 	v, losses, gaps = [], [], []
 	v_v, losses_v, gaps_v = [], [], []
@@ -237,12 +246,12 @@ function main(args)
 	#idxs=idxs[1:10];
 
 	res_folder =
-		"BatchVersion_bs_" * string(batch_size) * "_" * string(a_b) * "_" * string(split(folder, "/")[end-1]) * "_" * string(lr) * "_" * string(decay) * "_" * string(cn) * "_" * string(mti) * "_" * string(mvi) * "_" * string(seed) * "_" * string(maxIt) *
+		"BatchVersion_bs_" * string(batch_size) * "_seed"*string(seed)*"_" * string(a_b) * "_" * string(split(folder, "/")[end-1]) * "_" * string(lr) * "_" * string(decay) * "_" * string(cn) * "_" * string(mti) * "_" * string(mvi) * "_" * string(seed) * "_" * string(maxIt) *
 		"_" * string(maxEp) * "_" * string(soft_updates) * "_" *
-		string(h_representation) * "_" * string(sampling_θ) * "_" * string(h_act) * "_" * string(use_softmax) * "_" * string(gamma) * "_" * string(lambda) * "_" * string(delta) * "_" * string(distribution_function) * "_" * string(bgr) * "_" *
+		string(h_representation) * "_" * string(sampling_θ) * string(sampling_t)* "_" * string(h_act) * "_" * string(use_softmax) * "_" * string(gamma) * "_" * string(lambda) * "_" * string(delta) * "_" * string(distribution_function) * "_" * string(bgr) * "_" *
 		string(incremental)*"_rc"*string(reduced_components)*"_ss"*string(scheduling_ss)
-	sN = sum([1 for j in readdir("res") if contains(j, res_folder)]; init = 0.0)
-	res_folder = "res/" * res_folder * "_" * string(sN + 1)
+	sN = sum([1 for j in readdir("resLogs") if contains(j, res_folder)]; init = 0.0)
+	res_folder = "resLogs/" * res_folder * "_" * string(sN + 1)
 	mkdir(res_folder)
 	f = JSON.open(res_folder * "/dataset.json", "w")
 	JSON.print(f, Dict("training" => directory[idxs], "validation" => directory[idxs_v], "test" => directory[idxs_test]))
@@ -318,6 +327,11 @@ function main(args)
 				#if last_train_loss < losses[end]
 				Flux.adjust!(opt_st, ParameterSchedulers.next!(scheduler))
 			end
+			
+			nn_val.encoder=nn.encoder
+			nn_val.decoder_t=nn.decoder_t
+			nn_val.decoder_γk=nn.decoder_γk
+			nn_val.decoder_γq=nn.decoder_γq
 
 
 			first = 1
@@ -330,13 +344,13 @@ function main(args)
 				bt = batch_size == 1 && !a_b ? SoftBundleFactory() : BatchedSoftBundleFactory()
 				B = BundleNetworks.initializeBundle(bt, ϕ, z, factory, max(maxIt, maxItVal) + 1,reduced_components)
 				B.maxIt = max(maxIt, maxItVal)
-				BundleNetworks.reset!(nn, max(1, last - first + 1))
+				BundleNetworks.reset!(nn_val, max(1, last - first + 1))
 
 				BundleNetworks.reinitialize_Bundle!(B)
 				t0 = time()
 				r_f = (batch_size > 1 || a_b ? sum(sizeE(f.inst) for f in ϕ) : sizeE(ϕ.inst)) * maxIt / (last - first + 1)
-				val = BundleNetworks.bundle_execution(B, ϕ, nn; soft_updates = soft_updates, λ = lambda, γ = gamma, δ = delta, distribution_function, verbose = 0,inference=false) / r_f
-
+				val = BundleNetworks.bundle_execution(B, ϕ, nn_val; soft_updates = soft_updates, λ = lambda, γ = gamma, δ = delta, distribution_function, verbose = 0,inference=false) / r_f
+				
 				time_val = time() - t0
 				append!(ls_v, val)
 
