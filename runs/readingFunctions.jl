@@ -56,3 +56,22 @@ end
 close(f)
 return Instances.cpuInstanceMCND(n, edges, commodities, fc, r, c)
 end
+
+
+function my_read_ga_json(path)
+    f = JSON.open(path, "r")
+    data = JSON.parse(f)
+    close(f)
+    goldV = -data["labels"]["Ld"]
+
+    data_ins = data["instance"]
+
+    I = data_ins["I"]
+    J = data_ins["J"]
+    
+    c = Float32.(data_ins["c"])
+    w = Float32.(hcat(data_ins["w"]...))
+    p = Float32.(hcat(data_ins["p"]...))
+
+    return Instances.cpuInstanceGA(I,J,p,w,c), Float32(goldV)
+end

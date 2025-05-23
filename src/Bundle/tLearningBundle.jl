@@ -310,6 +310,7 @@ function bundle_execution(B::DeepBundle, ϕ::AbstractConcaveFunction; t_strat::a
 	times = Dict("times" => [], "trial point" => [], "ϕ" => [], "update β" => [], "SS/NS" => [], "update DQP" => [], "solve DQP" => [], "remove outdated" => [])
 	ignore_derivatives() do
 		t0 = time()
+		t1=time()
 	end
 	for epoch in 1:B.params.maxIt
 		ignore_derivatives() do
@@ -321,12 +322,11 @@ function bundle_execution(B::DeepBundle, ϕ::AbstractConcaveFunction; t_strat::a
 			append!(times["trial point"], (time() - t1))
 			t0 = time()
 		end
-		t0 = time()
 		# compute the objective value and sub-gradient in the new trial-point
 		obj, g = value_gradient(ϕ, z) # to optimize
 		ignore_derivatives() do
 			append!(times["ϕ"], (time() - t0))
-			t0 = time()
+
 			# update the bundle with the new information
 			update_Bundle(B, z, g, obj)
 		end
@@ -390,3 +390,4 @@ function bundle_execution(B::DeepBundle, ϕ::AbstractConcaveFunction; t_strat::a
 
 	end
 end
+

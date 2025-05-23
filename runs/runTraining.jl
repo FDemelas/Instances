@@ -167,6 +167,7 @@ function main(args)
 	h_act = (parsed_args["h_act"] == "softplus") ? softplus : (parsed_args["h_act"] == "tanh" ? tanh : (parsed_args["h_act"] == "gelu" ? gelu : relu))
 	sampling_θ = parsed_args["sampling_gamma"]
 	sampling_t = parsed_args["sampling_t"]
+	act= contains(folder,"GA") ? relu : identity
 
 	reduced_components = parsed_args["reduced_components"]
 	distribution_function = use_softmax ? softmax : (BundleNetworks.sparsemax)
@@ -286,7 +287,7 @@ function main(args)
 				mv = 0.0
 				B.maxIt = incremental ? min(2 * it * maxIt / maxEp, maxIt) : maxIt
 				r_f = (batch_size > 1 || a_b ? sum(sizeE(f.inst) for f in ϕ) : sizeE(ϕ.inst)) * maxIt / (last - first + 1)
-				vv, grads = Flux.withgradient((m) -> .- BundleNetworks.bundle_execution(B, ϕ, m; soft_updates = soft_updates, λ = lambda, γ = gamma, δ = delta, distribution_function, verbose = 0,inference=false) / r_f, nn)
+				vv, grads = Flux.withgradient((m) -> .- BundleNetworks.bundle_execution(B, ϕ, m; soft_updates = soft_updates, λ = lambda, γ = gamma, δ = delta, distribution_function, verbose = 0,inference=false,act) / r_f, nn)
 				vv = -vv
 
 				_, nn = Flux.Optimisers.update!(opt_st, nn, grads[1])
@@ -349,7 +350,7 @@ function main(args)
 				BundleNetworks.reinitialize_Bundle!(B)
 				t0 = time()
 				r_f = (batch_size > 1 || a_b ? sum(sizeE(f.inst) for f in ϕ) : sizeE(ϕ.inst)) * maxIt / (last - first + 1)
-				val = BundleNetworks.bundle_execution(B, ϕ, nn_val; soft_updates = soft_updates, λ = lambda, γ = gamma, δ = delta, distribution_function, verbose = 0,inference=false) / r_f
+				val = BundleNetworks.bundle_execution(B, ϕ, nn_val; soft_updates = soft_updates, λ = lambda, γ = gamma, δ = delta, distribution_function, verbose = 0,inference=false,act) / r_f
 				
 				time_val = time() - t0
 				append!(ls_v, val)

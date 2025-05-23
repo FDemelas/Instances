@@ -151,17 +151,17 @@ function size_features(lt::AttentionModelFactory)
 end
 
 mutable struct AttentionModel <: AbstractModel
-	encoder::Any # model to encode mean and variance to sample hidden representations
-	decoder_t::Any # decode t from hidden representation
-	decoder_γk::Any# decode keys from hidden representation
-	decoder_γq::Any# decode query from hidden representation
-	rng::Any #random number generator
+	encoder::Chain # model to encode mean and variance to sample hidden representations
+	decoder_t::Chain # decode t from hidden representation
+	decoder_γk::Chain# decode keys from hidden representation
+	decoder_γq::Chain# decode query from hidden representation
+	rng::MersenneTwister #random number generator
 	sample_t::Bool # if true sample hidden representation of t, otherwhise take the mean (i.e. no sampling)
 	sample_γ::Bool# if true sample hidden representation of keys and queries, otherwhise take the mean (i.e. no sampling)
-	Ks::Any # matrix og keys
-	μs::Any # random normal matrix that stock the means of keys and queries before the sampling. Useful only if log_trick is true 
-	σs::Any # random normal matrix that stock the variances of keys and queries before the sampling. Useful only if log_trick is true 
-	ϵs::Any # random normal matrix that stock the random part of the sampling. Useful only if log_trick is true
+	Ks::Zygote.Buffer{Float32, CUDA.CuArray{Float32, 2, CUDA.DeviceMemory}} # matrix og keys
+	μs::Zygote.Buffer{Float32, CUDA.CuArray{Float32, 2, CUDA.DeviceMemory}} # random normal matrix that stock the means of keys and queries before the sampling. Useful only if log_trick is true 
+	σs::Zygote.Buffer{Float32, CUDA.CuArray{Float32, 2, CUDA.DeviceMemory}} # random normal matrix that stock the variances of keys and queries before the sampling. Useful only if log_trick is true 
+	ϵs::Zygote.Buffer{Float32, CUDA.CuArray{Float32, 2, CUDA.DeviceMemory}} # random normal matrix that stock the random part of the sampling. Useful only if log_trick is true
 	rescaling_factor::Int64 # rescaling_factor for the output γs (unused for the moment)
 	log_trick::Bool # if true use the log_trick regularization. Note: for the moment it is not implemented
 	h_representation::Int64 # size of hidden representations
@@ -183,15 +183,9 @@ function reset!(m::AttentionModel, bs::Int = 1, it::Int = 500)
 	# reinitialization of the keys matrix
 	m.Ks = Zygote.bufferfrom(device(zeros(Float32, bs * m.h_representation, it)))#[]
 	# if log_tricks is true reinitialize the matrix used to store random part, mean and variance of keys and queries
-	if m.log_trick
-		m.μs = Zygote.bufferfrom(device(zeros(Float32, 2 * m.h_representation * bs, it)))#[]
-		m.σs = Zygote.bufferfrom(device(zeros(Float32, 2 * m.h_representation * bs, it)))#[]
-		m.ϵs = Zygote.bufferfrom(device(zeros(Float32, 2 * m.h_representation * bs, it)))#[]
-	else
-		m.μs = []
-		m.σs = []
-		m.ϵs = []
-	end
+	m.μs = Zygote.bufferfrom(device(zeros(Float32, 2 * m.h_representation * bs, it)))#[]
+	m.σs = Zygote.bufferfrom(device(zeros(Float32, 2 * m.h_representation * bs, it)))#[]
+	m.ϵs = Zygote.bufferfrom(device(zeros(Float32, 2 * m.h_representation * bs, it)))#[]
 	# reset iteration counter to 1
 	m.it = 1
 end
@@ -279,6 +273,7 @@ function create_NN(
 	log_trick::Bool = false,
 	ot_act = softplus,
 )
+	bs,it=1,1
 	# possibly a normalization function, but is `norm` is false, then it is the identity
 	f_norm(x) = norm ? Flux.normalise(x) : identity(x)
 
@@ -308,7 +303,7 @@ function create_NN(
 	decoder_γk = Chain(i_decoder_layer, h_decoder_layers..., o_decoder_layers)
 
 	#put all together to construct an `AttentionModel`
-	model = AttentionModel(device(encoder), device(decoder_t), device(decoder_γk), device(decoder_γq), rng, sampling_t, sampling_θ, device([]), device([]), device([]), device([]), 1.0, log_trick, h_representation, 1)
+	model = AttentionModel(device(encoder), device(decoder_t), device(decoder_γk), device(decoder_γq), rng, sampling_t, sampling_θ, device( Zygote.bufferfrom(device(zeros(Float32, bs * h_representation, it)))), device( Zygote.bufferfrom(device(zeros(Float32, bs * h_representation, it)))), device( Zygote.bufferfrom(device(zeros(Float32, bs * h_representation, it)))), device( Zygote.bufferfrom(device(zeros(Float32, bs * h_representation, it)))), 1.0, log_trick, h_representation, 1)
 	return model
 end
 

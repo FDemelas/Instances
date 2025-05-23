@@ -30,6 +30,7 @@ include("Models/AbstractModel.jl")
 
 include("ObjectiveFunctions/InnerLoss.jl")
 include("ObjectiveFunctions/LagrangianMCND.jl")
+include("ObjectiveFunctions/LagrangianGA.jl")
 
 include("Auxiliary/instanceFeatures.jl")
 include("Auxiliary/sparsemax.jl")

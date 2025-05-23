@@ -34,9 +34,9 @@ Considering the function `ϕ` and the staring point `z`.
 `lt` will be the factory of the model that we want consider for the prediction at the place of the Dual Master Problem.
 The Bundle will be initialized to perform `maxIt` iterations (by default `10`).
 """
-function initializeBundle(bt::SoftBundleFactory, ϕ::AbstractConcaveFunction, z::AbstractArray, lt, maxIt::Int = 10,reduced_components::Bool=false)
+function initializeBundle(bt::SoftBundleFactory, ϕ::AbstractConcaveFunction, z::AbstractArray, lt, maxIt::Int = 10, reduced_components::Bool = false)
 	# Construct Bundle structure
-	B = SoftBundle([], [], [], -1, [], [], [], Inf, [Inf], [Float32[]], lt, [], 0, 0, [], 1, Dict(), maxIt, [1.0], 1,[1],reduced_components)
+	B = SoftBundle([], [], [], -1, [], [], [], Inf, [Inf], [Float32[]], lt, [], 0, 0, [], 1, Dict(), maxIt, [1.0], 1, [1], reduced_components)
 	# Compute objective and sub-gradient in z
 	obj, g = value_gradient(ϕ, reshape(z, sizeInputSpace(ϕ)))
 	# reshape gradient to a vector
@@ -78,7 +78,7 @@ function reinitialize_Bundle!(B::SoftBundle)
 	B.li = 1
 	B.s = 1
 	B.size = 1
-	B.lis=[1]
+	B.lis = [1]
 	# reinitialize the gradient matrix, the visited point matrix, the linearization error matrix and the objective value matrix
 	B.G = Zygote.bufferfrom(device(hcat([B.G[:, 1], zeros(size(B.G, 1), B.maxIt)]...)))
 	B.z = Zygote.bufferfrom(device(hcat([B.z[:, 1], zeros(size(B.z, 1), B.maxIt)]...)))
@@ -109,7 +109,8 @@ function bundle_execution(
 	unstable = false,
 	inference = false,
 	z_bar = Zygote.bufferfrom(Float32.(vcat([B.z[:, B.s]]...))),
-	z_new = Zygote.bufferfrom(B.z[:, B.li]))
+	z_new = Zygote.bufferfrom(B.z[:, B.li]),
+	act=identity)
 	# Some global data initialized into inner blocks (as ignore_derivatives() ) should be defined in a more global scope
 	let xt, xγ, z_copy, LR_vec, Baseline, obj_new, obj_bar, g, t0, t1, times, maxIt, t, γs, θ, w, comps
 		# Initialize a dictionary to store times and the maximum iteration number
@@ -140,7 +141,7 @@ function bundle_execution(
 			B.objB = 0
 			# initialization time
 			times["init"] = time() - t0
-			comps=Zygote.bufferfrom([ones(Int64, it) for it in 1:maxIt+1])
+			comps = Zygote.bufferfrom([ones(Int64, it) for it in 1:maxIt+1])
 		end
 		for it in 1:maxIt
 			ignore_derivatives() do
@@ -168,7 +169,7 @@ function bundle_execution(
 				t1 = time()
 			end
 			# output of the model: step-size t and one value for each bundle component, i.e. γs[it] that has it components
-			t, γs[it] = m(xt, xγ, B.li,comps[it])
+			t, γs[it] = m(xt, xγ, B.li, comps[it])
 
 			# store B.t for features extraction (no derivative is needed as we did not differentate through features extraction)
 			ignore_derivatives() do
@@ -214,7 +215,7 @@ function bundle_execution(
 			end
 
 			# Compute the new trial point considering a step of size `t` from the stabilization point `z_bar` considering the new search direction `w[it]`
-			z_new[:] = z_bar[:] .+ sum(t) .* w[it]
+			z_new[:] = act(z_bar[:] .+ sum(t) .* w[it])
 
 			# Store the time for compute the new trial point
 			ignore_derivatives() do
@@ -237,31 +238,31 @@ function bundle_execution(
 			end
 
 
-			B.size+=1
+			B.size += 1
 			B.li = B.size
 			if B.reduced_components
 				already_in = false
-				j=[]
+				j = []
 				for i in comps[it]
 					if sum(B.G[:, i] - g[:]) < 1.0e-6
 						already_in = true
 						ignore_derivatives() do
-                                                        push!(j,i)
-                                                end
+							push!(j, i)
+						end
 					end
 				end
 				if already_in
-					comps[it+1] = vcat([k for k in comps[it] if !(k in j)],B.size)
+					comps[it+1] = vcat([k for k in comps[it] if !(k in j)], B.size)
 				else
-					comps[it+1] = vcat(comps[it],B.size)
+					comps[it+1] = vcat(comps[it], B.size)
 				end
 			else
-				comps[it+1] = vcat(comps[it],B.size)
+				comps[it+1] = vcat(comps[it], B.size)
 			end
-			
+
 
 			ignore_derivatives() do
-				append!(B.lis,B.li)
+				append!(B.lis, B.li)
 			end
 
 
@@ -323,7 +324,7 @@ function bundle_execution(
 		else
 			# at training time return the loss value
 			# first a telescopic sum of all the visited points
-			vγ = (γ > 0 ? γ * mean([γ^(maxIt+1 - i) for i in (maxIt+1):-1:1] .* [ϕ(reshape(z, sizeInputSpace(ϕ))) for z in eachcol(B.z[:, 1:(maxIt+1)])]) : 0)
+			vγ = (γ > 0 ? γ * mean([γ^(maxIt + 1 - i) for i in (maxIt+1):-1:1] .* [ϕ(reshape(z, sizeInputSpace(ϕ))) for z in eachcol(B.z[:, 1:(maxIt+1)])]) : 0)
 			# then also a convex combination of final trial point and final stabilization point
 			vλ = (1 - λ) * ϕ(reshape(z_bar[:], sizeInputSpace(ϕ))) + (λ) * ϕ(reshape(z_new[:], sizeInputSpace(ϕ)))
 			# the loss will be a sum of the two
