@@ -130,7 +130,8 @@ function bundle_execution(
 	unstable = false,
 	inference = false,
 	z_bar = Zygote.bufferfrom(Float32.(vcat([B.z[s:e, B.s[i]] for (i, (s, e)) in enumerate(B.idxComp)]...))),
-	z_new = Zygote.bufferfrom(B.z[:, B.li]))
+	z_new = Zygote.bufferfrom(B.z[:, B.li]),
+	act=identity	)
 	# Some global data initialized into inner blocks (as ignore_derivatives() ) should be defined in a more global scope
 	let xt, xγ, z_copy, LR_vec, Baseline, obj_new, obj_bar, g, t0, t1, times, maxIt, t, γs, θ, comps
 		# Initialize a dictionary to store times and the maximum iteration number
@@ -228,7 +229,7 @@ function bundle_execution(
 			end
 
 			# Compute the new trial point considering a step of size `t` from the stabilization point `z_bar` considering the new search direction `w[it]`
-			z_new[:] = z_bar[:] + vcat([B.t[i] * B.w[s:e] for (i, (s, e)) in enumerate(B.idxComp)]...)
+			z_new[:] = act(z_bar[:] + vcat([B.t[i] * B.w[s:e] for (i, (s, e)) in enumerate(B.idxComp)]...))
 			ignore_derivatives() do
 				append!(times["update_point"], time() - t1)
 			end

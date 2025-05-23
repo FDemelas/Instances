@@ -98,7 +98,7 @@ function bundle_execution(
 	B::SoftBundle,
 	ϕ::AbstractConcaveFunction,
 	m::AbstractModel;
-	soft_updates = false,
+	soft_updates = true,
 	λ = 0.0,
 	γ = 0.0,
 	δ = 0.0,
