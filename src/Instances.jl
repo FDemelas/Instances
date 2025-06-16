@@ -8,15 +8,11 @@ using LinearAlgebra
 using SparseArrays
 using Random
 using Statistics
-<<<<<<< HEAD
 using NCDatasets
 using CommonDataModel
 using Graphs
 using JSON
 
-=======
-using Documenter
->>>>>>> master
 
 global CR_Optimiser = HiGHS.Optimizer
 
@@ -34,10 +30,7 @@ include("dataStructures/MCND_dataInstance.jl")
 include("dataStructures/mcnd_instance.jl")
 include("dataStructures/mcnd_instance_gpu.jl")
 include("dataStructures/UC_instance.jl")
-<<<<<<< HEAD
 include("dataStructures/TUC_instance.jl")
-=======
->>>>>>> master
 
 include("optimization/KnapsackSolver.jl")
 include("optimization/CWL/linearRelaxation.jl")
@@ -50,14 +43,11 @@ include("optimization/gpuMCND/lagrangianSubProblem.jl")
 include("optimization/UC/linearRelaxation.jl")
 include("optimization/UC/lagrangianRelaxation.jl")
 
-<<<<<<< HEAD
 include("optimization/TUC/linearRelaxation.jl")
 include("optimization/TUC/lagrangianRelaxation.jl")
 include("optimization/TUC/lagrangianRelaxation_DP.jl")
 
 
-=======
->>>>>>> master
 export abstractInstance,abstractInstanceFactory
 export instanceCWL,cpuInstanceCWL ,CWLinstanceFactory,cpuCWLinstanceFactory
 export instanceGA, cpuInstanceGA, GAinstanceFactory, cpuGAinstanceFactory

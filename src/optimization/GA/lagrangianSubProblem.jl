@@ -1,11 +1,5 @@
 """
-<<<<<<< HEAD
-LR(ins::cpuInstanceGA,π)
-
-#Arguments:
-=======
 # Arguments:
->>>>>>> master
 -`ins`: an instance structure of the Bin packing Problem
 -`π`: a vector of Lagrangian Multipliers
 

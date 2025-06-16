@@ -1,9 +1,5 @@
 """
-<<<<<<< HEAD
 struct gpuMCNDinstance <: abstractInstanceMCND
-=======
-Structure to describe  a MCND instance in such a way that the sub-problem can be solved using GPU.
->>>>>>> master
 
 # Fields:
 - `n` : nombre de sommets

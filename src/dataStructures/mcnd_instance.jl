@@ -1,9 +1,5 @@
 """
-<<<<<<< HEAD
 struct cpuInstanceMCND <: abstractInstance
-=======
-Structure to describe  a MCND instance in such a way that the sub-problem can be solved using CPU.
->>>>>>> master
 
 # Fields:
 - `n` : nombre de sommets
@@ -34,11 +30,8 @@ struct cpuMCNDinstanceFactory <: MCNDinstanceFactory end
 
 
 """
-<<<<<<< HEAD
 function create_data_object(::cpuMCNDinstanceFactory, n, edges, K, f, r, c)
 
-=======
->>>>>>> master
 # Arguments:
 - ::cpuMCNDinstanceFactory: The standard instance factory formulation.
 - `n`: The number of node in the graph that defines the instance.
@@ -56,13 +49,9 @@ create_data_object(::cpuMCNDinstanceFactory, n, edges, K, f, r, c) = cpuInstance
 
 
 """
-<<<<<<< HEAD
 function read_dat(path::String,factory::cpuMCNDinstanceFactory)
 
 #Arguments:
-=======
-# Arguments:
->>>>>>> master
 -`path`: a String that contains the path to the data file of the instance
 -`factory`: a cpuMCNDinstanceFactory used only to construct an instance of the proper type (cpuInstanceMCND)
 
@@ -107,13 +96,9 @@ function read_dat(path::String, factory::cpuMCNDinstanceFactory)
 end
 
 """
-<<<<<<< HEAD
 function modify_instance(ins::cpuInstanceMCND, seed::Int64, x::Real)
 
 #Arguments: 
-=======
-# Arguments: 
->>>>>>> master
 -`ins`: an instance object cpuInstanceMCND, 
 -`seed`: the random generation seed
 -`x`: a number that allows to increase/decrease the number of demands/commodities in the instance as size(new_demands)=round(x*size(new_demands))
@@ -148,19 +133,11 @@ end
 
 
 """
-<<<<<<< HEAD
 function print_dat(path::String, ins::cpuInstanceMCND)
 
 	# Arguments:
 		- `path`: the path to the file where we want print the data
 		- `ins`: the instance object that we want print in a file, should be a cpuInstanceMCND
-=======
-# Arguments:
-		- `path`: the path to the file where we want print the data
-		- `ins`: the instance object that we want print in a file, should be a cpuInstanceMCND
-
-print the instance `ins` in the file in `path`.
->>>>>>> master
 """
 function print_dat(path::String, ins::cpuInstanceMCND)
 	f = open(path, "w")

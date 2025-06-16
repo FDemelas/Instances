@@ -1,12 +1,7 @@
 """
-<<<<<<< HEAD
 	cijk(ins::instance, e, k, π)
 
 	# Arguments:
-=======
-# Arguments:
->>>>>>> master
-
 	- `ins`: instance of the problem
 	- `e`: index of the edge
 	- `k`: index of the commodity
@@ -19,13 +14,7 @@ cijk(ins::cpuInstanceMCND, e, k, π) = isInKij(ins, k, e) ? routing_cost(ins, e,
 
 
 """
-<<<<<<< HEAD
-	LR(ins, π, x, y, demands, e)
-
-	# Arguments:
-=======
 # Arguments:
->>>>>>> master
 
 	- `ins`: cpuInstanceMCND of the problem
 	- `π`: a Lagrangian multipliers Vector
@@ -80,11 +69,6 @@ end
 
 
 """
-<<<<<<< HEAD
-LR(ins::cpuInstanceMCND, π)
-
-=======
->>>>>>> master
 # Arguments:
 
 - `ins`: cpuInstanceMCND of the problem
@@ -108,13 +92,7 @@ function LR(ins::cpuInstanceMCND, π)
 end
 
 """
-<<<<<<< HEAD
-	constantLagrangianBound(ins::cpuInstanceMCND, π)
-
-	# Arguments:
-=======
 # Arguments:
->>>>>>> master
 
 	- `ins`: cpuInstanceMCND of the problem
 	- `π`: a Lagrangian multipliers Vector
@@ -131,11 +109,6 @@ function constantLagrangianBound(ins::cpuInstanceMCND, π)
 end
 
 """
-<<<<<<< HEAD
-value_L(ins::cpuInstanceMCND, π, x, y)
-
-=======
->>>>>>> master
 # Arguments:
 
 	- `ins`: cpuInstanceMCND of the problem
@@ -148,13 +121,7 @@ using the lagrangian multipliers vector π and the primal solution (x,y).
 value_LR(ins::cpuInstanceMCND, π, x, y) = sum(value_LR_a(ins, ia, π, x, y) for ia ∈ 1:sizeE(ins)) - constantLagrangianBound(ins, π)
 
 """
-<<<<<<< HEAD
-	value_L_a(ins, ia, π, x, y)
-	
-	# Arguments:
-=======
 # Arguments:
->>>>>>> master
 
 	- `ins`: cpuInstanceMCND of the problem
 	- `ia`: index of the arc
