@@ -10,38 +10,51 @@ Solve the linear relaxation of the provided instance and then, it returns the ob
 function CR(ins::UC_instance)
 	T = ins.T
 	G = ins.G 
-# αγηρ
+	
+	println("Model Initialized with ",CR_Optimiser, " as Optimiser")	
 	model = Model(CR_Optimiser)
 
+
+	println("Adding Variables")	
 	@variable(model, 1 >= α[g = 1:G, t = 1:T] >= 0)
 	@variable(model, 1 >= γ[g = 1:G, t = 1:T] >= 0)
 	@variable(model, 1 >= η[g = 1:G, t = 1:T] >= 0)
 	@variable(model, Inf >= ρ[g = 1:G, t = 1:T] >= 0)
 
+
+	println("Adding Load Balance Constraints")	
 	@constraint(model, load_balance[t = 1:T], sum(ρ[:,t]) >= ins.Pd_power_demend[t])
+	
+
+	println("Adding Reserve Constraints")
 	@constraint(model, reserve[t = 1:T], sum([ ins.P_max_gen[g] * α[g,t] - ρ[g,t] for g in 1:G]) >= ins.Pr_reserve_requirement[t])
 	
+	println("Adding Power Output Bounds")
     @constraint(model, power_output_lower_bounds[g = 1:G, t = 1:T], ins.P_min_gen[g]*α[g,t]- ρ[g,t] <= 0)
 	@constraint(model, power_output_upper_bounds[g = 1:G, t = 1:T], -ins.P_max_gen[g]*α[g,t]+ ρ[g,t] <= 0)
 
-
+	println("Adding Ramping Constraints")
 	@constraint(model, ramp_up_bounds[g = 1:G, t = 2:T], - ins.P_startup_ramp[g] * γ[g,t]-ins.P_ramp_up[g]*α[g,t-1] + ρ[g,t] - ρ[g,t-1] <= 0)
 	@constraint(model, ramp_down_bounds[g = 1:G, t = 2:T], - ins.P_shutdown_ramp[g] *  η[g,t] -ins.P_ramp_down[g]*α[g,t] + ρ[g,t-1] - ρ[g,t] <= 0)
 
+	println("Adding UP/DOWN time Constraints")
 	@constraint(model, minimum_uptime[g = 1:G, t = 1:T], sum([γ[g,u] for u in  Int64(max(1,t-ins.T_startup_time[g]+1)):t]) - α[g,t] <= 0)
 	@constraint(model, minimum_downtime[g = 1:G, t = 1:T], sum([η[g,u] for u in Int64(max(1,t-ins.T_startup_time[g]+1)):t]) + α[g,t] -1 <= 0)
 
+	println("Adding Logistical Constraints")
 	@constraint(model, logistical_constraints_1[g = 1:G, t = 2:T], + α[g,t] - α[g,t-1] - γ[g,t] + η[g,t] == 0)
-		
 	@constraint(model, logistical_constraints_2[g = 1:G, t = 1:T], γ[g,t] + η[g,t] <= 1)
 	
+	println("Adding Objective Function")
 	@objective(model, Min, LinearAlgebra.dot(repeat(ins.C_no_load',T) , α)+ LinearAlgebra.dot(repeat(ins.C_marginal',T),  ρ) + LinearAlgebra.dot(repeat(ins.C_startup',T),  γ ) )
   
     
-	
+	println("Model Constructed")	
 	set_silent(model)
 	optimize!(model)
 
+
+println("Model Solved")
 	if dual_status(model) == NO_SOLUTION
 		return 0
 	end
@@ -66,17 +79,6 @@ function CR(ins::UC_instance)
     logistical_constraints_1_v = dual.(logistical_constraints_1)
     logistical_constraints_2_v = dual.(logistical_constraints_2)
 
-    load_balance_sp = shadow_price.(load_balance)
-    reserve_sp = shadow_price.(reserve)
-    power_output_lower_bounds_sp = shadow_price.(power_output_lower_bounds)
-    power_output_upper_bounds_sp = shadow_price.(power_output_upper_bounds)
-    ramp_up_bounds_sp = shadow_price.(ramp_up_bounds)
-    ramp_down_bounds_sp = shadow_price.(ramp_down_bounds)
-    minimum_uptime_sp = shadow_price.(minimum_uptime)
-    minimum_downtime_sp = shadow_price.(minimum_downtime)
-    logistical_constraints_1_sp = shadow_price.(logistical_constraints_1)
-    logistical_constraints_2_sp = shadow_price.(logistical_constraints_2)
-	
 	for g in 1:G
 		for t in 1:T
 			αV[g , t ] = value(α[g , t ])
@@ -90,5 +92,5 @@ function CR(ins::UC_instance)
 		end
 	end
 
-	return JuMP.objective_value(model), [load_balance_v..., reserve_v...],αV,  γV, ηV, ρV, αRC, γRC,ηRC,ρRC, power_output_lower_bounds_v, power_output_upper_bounds_v, ramp_up_bounds_v, ramp_down_bounds_v, minimum_uptime_v, minimum_downtime_v, logistical_constraints_1_v, logistical_constraints_2_v, load_balance_sp, reserve_sp, power_output_lower_bounds_sp, power_output_upper_bounds_sp, ramp_up_bounds_sp, ramp_down_bounds_sp, minimum_uptime_sp, minimum_downtime_sp, logistical_constraints_1_sp, logistical_constraints_2_sp
+	return JuMP.objective_value(model), [load_balance_v..., reserve_v...],αV,  γV, ηV, ρV, αRC, γRC,ηRC,ρRC, power_output_lower_bounds_v, power_output_upper_bounds_v, ramp_up_bounds_v, ramp_down_bounds_v, minimum_uptime_v, minimum_downtime_v, logistical_constraints_1_v, logistical_constraints_2_v
 end
