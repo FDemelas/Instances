@@ -4,11 +4,27 @@ authors = ["francescoDemelas <86729870+francescoDemelas@users.noreply.github.com
 version = "0.1.0"
 
 [deps]
-Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+CommonDataModel = "1fbeeb36-5f17-413c-809b-666fb144f157"
+Graphs = "86223c79-3864-5bf0-83f7-82e725a168b6"
 Gurobi = "2e9cd046-0924-5485-92f1-d5272153d98b"
 HiGHS = "87dc4568-4c63-4d18-b0c0-bb2238e4078b"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+
+[compat]
+CommonDataModel = "0.3.8"
+Graphs = "1.13.0"
+Gurobi = "1.7.4"
+HiGHS = "1.18.1"
+JSON = "0.21.4"
+JuMP = "1.26.0"
+LinearAlgebra = "1.11.0"
+NCDatasets = "0.14.8"
+Random = "1.11.0"
+SparseArrays = "1.11.0"
+Statistics = "1.11.1"

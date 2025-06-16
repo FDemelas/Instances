@@ -1,6 +1,7 @@
 """
-# Arguments:
+	cijk(ins::instance, e, k, π)
 
+	# Arguments:
 	- `ins`: instance of the problem
 	- `e`: index of the edge
 	- `k`: index of the commodity

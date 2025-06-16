@@ -1,5 +1,5 @@
 """
-Structure to describe  a MCND instance in such a way that the sub-problem can be solved using CPU.
+struct cpuInstanceMCND <: abstractInstance
 
 # Fields:
 - `n` : nombre de sommets
@@ -30,6 +30,8 @@ struct cpuMCNDinstanceFactory <: MCNDinstanceFactory end
 
 
 """
+function create_data_object(::cpuMCNDinstanceFactory, n, edges, K, f, r, c)
+
 # Arguments:
 - ::cpuMCNDinstanceFactory: The standard instance factory formulation.
 - `n`: The number of node in the graph that defines the instance.
@@ -47,7 +49,9 @@ create_data_object(::cpuMCNDinstanceFactory, n, edges, K, f, r, c) = cpuInstance
 
 
 """
-# Arguments:
+function read_dat(path::String,factory::cpuMCNDinstanceFactory)
+
+#Arguments:
 -`path`: a String that contains the path to the data file of the instance
 -`factory`: a cpuMCNDinstanceFactory used only to construct an instance of the proper type (cpuInstanceMCND)
 
@@ -92,7 +96,9 @@ function read_dat(path::String, factory::cpuMCNDinstanceFactory)
 end
 
 """
-# Arguments: 
+function modify_instance(ins::cpuInstanceMCND, seed::Int64, x::Real)
+
+#Arguments: 
 -`ins`: an instance object cpuInstanceMCND, 
 -`seed`: the random generation seed
 -`x`: a number that allows to increase/decrease the number of demands/commodities in the instance as size(new_demands)=round(x*size(new_demands))
@@ -127,11 +133,11 @@ end
 
 
 """
-# Arguments:
+function print_dat(path::String, ins::cpuInstanceMCND)
+
+	# Arguments:
 		- `path`: the path to the file where we want print the data
 		- `ins`: the instance object that we want print in a file, should be a cpuInstanceMCND
-
-print the instance `ins` in the file in `path`.
 """
 function print_dat(path::String, ins::cpuInstanceMCND)
 	f = open(path, "w")

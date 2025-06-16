@@ -4,7 +4,9 @@ Abstract type for every instance of the Multi Commodity Network Design Problem.
 abstract type abstractInstanceMCND <: abstractInstance end
 
 """
-# Arguments:
+function origin(ins::instance, indexk)
+
+	# Arguments:
 	- `ins`: a normalized instance structure.
 	- `indexk`: the index of the commodity.
 
@@ -13,7 +15,9 @@ abstract type abstractInstanceMCND <: abstractInstance end
 origin(ins::abstractInstanceMCND, indexk) = ins.K[indexk][1]
 
 """
-# Arguments:
+function destination(ins::instance, indexk)
+
+	# Arguments:
 	- `ins`: a normalized instance structure.
 	- `indexk`: the index of the commodity.
 
@@ -22,7 +26,9 @@ origin(ins::abstractInstanceMCND, indexk) = ins.K[indexk][1]
 destination(ins::abstractInstanceMCND, indexk) = ins.K[indexk][2]
 
 """
-# Arguments:
+function volume(ins::instance, indexk)
+
+	# Arguments:
 	- `ins`: a normalized instance structure.
 	- `indexk`: the index of the commodity.
 
@@ -31,7 +37,9 @@ destination(ins::abstractInstanceMCND, indexk) = ins.K[indexk][2]
 volume(ins::abstractInstanceMCND, indexk) = ins.K[indexk][3]
 
 """
-# Arguments:
+function routing_cost(ins::instance, e, k)
+
+	# Arguments:
 	- `ins`: a normalized instance structure.
 	- `e`: the index of the edge.
 	- `k`: the index of the commodity.
@@ -41,7 +49,9 @@ volume(ins::abstractInstanceMCND, indexk) = ins.K[indexk][3]
 routing_cost(ins::abstractInstanceMCND, e, k) = ins.r[k, e]
 
 """
-# Arguments:
+function tail(ins::instance, indexe)
+
+	# Arguments:
 	- `ins`: a normalized instance structure.
 	- `indexe`: the index of the edge.
 	
@@ -50,7 +60,9 @@ routing_cost(ins::abstractInstanceMCND, e, k) = ins.r[k, e]
 tail(ins::abstractInstanceMCND, indexe::Int) = ins.edges[indexe][1]
 
 """
-# Arguments:
+function head(ins::instance, indexe)
+
+	# Arguments:
 	- `ins`: a normalized instance structure.
 	- `indexe`: the index of the edge.
 
@@ -59,7 +71,9 @@ tail(ins::abstractInstanceMCND, indexe::Int) = ins.edges[indexe][1]
 head(ins::abstractInstanceMCND, indexe::Int) = ins.edges[indexe][2]
 
 """
-# Arguments:
+function capacity(ins::instance, e)
+
+	# Arguments:
 	- `ins`: a normalized instance structure.
 	- `e`: the index of the edge.
 
@@ -68,7 +82,9 @@ head(ins::abstractInstanceMCND, indexe::Int) = ins.edges[indexe][2]
 capacity(ins::abstractInstanceMCND, e) = ins.c[e]
 
 """
-# Arguments:
+function fixed_cost(ins::instance, e)
+
+	# Arguments:
 	- `ins`: a normalized instance structure.
 	- `e`: the index of the edge.
 
@@ -77,7 +93,9 @@ capacity(ins::abstractInstanceMCND, e) = ins.c[e]
 fixed_cost(ins::abstractInstanceMCND, e) = ins.f[e]
 
 """
-# Arguments:
+function sizeK(ins::instance)
+
+	# Arguments:
 	- `ins`: a normalized instance structure.
 	
 	Returns the number of demands
@@ -85,7 +103,9 @@ fixed_cost(ins::abstractInstanceMCND, e) = ins.f[e]
 sizeK(ins::abstractInstanceMCND) = length(ins.K)
 
 """
-# Arguments:
+function sizeV(ins::instance)
+
+	# Arguments:
 	- `ins`: a normalized instance structure.
 
 	Returns the number of nodes
@@ -93,7 +113,9 @@ sizeK(ins::abstractInstanceMCND) = length(ins.K)
 sizeV(ins::abstractInstanceMCND) = ins.n
 
 """
-# Arguments:
+function sizeE(ins::instance)
+
+	# Arguments:
 	- `ins`: a normalized instance structure.
 
 	Returns the number of arcs
@@ -101,7 +123,9 @@ sizeV(ins::abstractInstanceMCND) = ins.n
 sizeE(ins::abstractInstanceMCND) = length(ins.edges)
 
 """
-# Arguments:
+function b(ins::instance, i, k)
+
+	# Arguments:
 	- `ins`: a normalized instance structure.
 	- `i`: the index of the node.
 	- `k`: the index of the commodity.
@@ -122,7 +146,9 @@ function b(ins::abstractInstanceMCND, i, k)
 end
 
 """
-# Arguments:
+function isInKij(ins::instance, k, e)
+
+	# Arguments:
 	- `ins`: a normalized instance structure.
 	- `e`: the index of the edge.
 	- `k`: the index of the commodity.
@@ -132,7 +158,9 @@ end
 isInKij(ins::abstractInstanceMCND, k, e) = origin(ins, k) != head(ins, e) && destination(ins, k) != tail(ins, e)
 
 """
-# Arguments:
+function outdegree(ins::instance, i)
+
+	# Arguments:
 	- `ins`: a normalized instance structure.
 	- `i`: the index of the node.
 
@@ -141,7 +169,9 @@ isInKij(ins::abstractInstanceMCND, k, e) = origin(ins, k) != head(ins, e) && des
 outdegree(ins::abstractInstanceMCND, i::Integer) = count(ij -> tail(ins, ij) == i, collect(1:size(ins.edges, 1)))
 
 """
-# Arguments:
+function indegree(ins::instance, i)
+
+	# Arguments:
 	- `ins`: a normalized instance structure.
 	- `i`: the index of the node.
 
@@ -150,7 +180,9 @@ outdegree(ins::abstractInstanceMCND, i::Integer) = count(ij -> tail(ins, ij) == 
 indegree(ins::abstractInstanceMCND, i::Integer) = count(ij -> head(ins, ij) == i, collect(1:size(ins.edges, 1)))
 
 """
-# Arguments:
+function outdegree_k(ins::instance, i, k)
+
+	# Arguments:
 	- `ins`: a normalized instance structure.
 	- `i`: the index of the node.
 	- `k`: the index of the commodity.
@@ -160,7 +192,9 @@ indegree(ins::abstractInstanceMCND, i::Integer) = count(ij -> head(ins, ij) == i
 outdegree_k(ins::abstractInstanceMCND, k::Integer, i::Integer) = destination(ins, k) == i ? 0 : count(ij -> tail(ins, ij) == i && isInKij(ins, k, ij), collect(1:size(ins.edges, 1)))
 
 """
-# Arguments:
+function indegree_k(ins::instance, i, k)
+
+	# Arguments:
 	- `ins`: a normalized instance structure.
 	- `i`: the index of the node.
 	- `k`: the index of the commodity.
@@ -170,6 +204,8 @@ outdegree_k(ins::abstractInstanceMCND, k::Integer, i::Integer) = destination(ins
 indegree_k(ins::abstractInstanceMCND, k::Integer, i::Integer) = origin(ins, k) == i ? 0 : count(ij -> head(ins, ij) == i && isInKij(ins, k, ij), collect(1:size(ins.edges, 1)))
 
 """
+function lengthLM(ins::instanceGA)
+	
 # Arguments:
 - `ins`: instance object, should be a sub-type of instanceGA
 
@@ -180,6 +216,8 @@ function lengthLM(ins::abstractInstanceMCND)
 end
 
 """
+function sizeLM(ins::instanceGA)
+	
 # Arguments:
 - `ins`: instance object, should be a sub-type of instanceGA
 

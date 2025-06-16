@@ -5,8 +5,7 @@ abstract type instanceGA <: abstractInstance end
 
 """
 Structure that describe an instance of the Generalized Assignment Problem.
-
-# Fields:
+#Fields:
 - `I`: number of items
 - `J`: number of bins
 - `p`: profit matrix
@@ -32,7 +31,9 @@ Factory structure used to construct an instance of the Bin Packing Problem.
 struct cpuGAinstanceFactory <: GAinstanceFactory end
 
 """
-# Arguments:
+function create_data_object(::cpuGAinstanceFactory, I, J, c, f, q, d)
+
+#Arguments:
 - `_`: factory of type cpuGAinstanceFactory
 - `I`: number of items
 - `J`: number of bins
@@ -45,6 +46,8 @@ Given the data, creates an instance of the Bin Packing Problem.
 create_data_object(::cpuGAinstanceFactory, I, J, p, w, c) = cpuInstanceGA(I, J, p, w, c)
 
 """
+function lengthLM(ins::instanceGA)
+	
 # Arguments:
 - `ins`: instance object, should be a sub-type of instanceGA
 
@@ -55,6 +58,8 @@ function lengthLM(ins::instanceGA)
 end
 
 """
+function sizeLM(ins::instanceGA)
+	
 # Arguments:
 - `ins`: instance object, should be a sub-type of instanceGA
 
@@ -65,7 +70,9 @@ function sizeLM(ins::instanceGA)
 end
 
 """
-# Arguments:
+function read_dat(path::String, _::cpuGAinstanceFactory)
+
+#Arguments:
 -`path`: a String that contains the path to the data file of the instance
 -`_`: a cpuGAinstanceFactory used only to construct an instance of the proper type ( . <: instanceGA)
 
@@ -114,6 +121,8 @@ function read_dat(path::String, _::cpuGAinstanceFactory)
 
 	c = zeros(Int64, J)
 
+#	line = split(readline(f), sep; keepempty = false)
+#	readed = length(line)
 	idx=1
     while idx <= J
 		idxL=1
@@ -133,7 +142,9 @@ function read_dat(path::String, _::cpuGAinstanceFactory)
 end
 
 """
-# Arguments:
+function print_dat(path::String, ins::instanceGA)
+
+	# Arguments:
 		- `path`: the path to the file where we want print the data
 		- `ins`: the instance object that we want print in a file, should be a <: instanceGA
 
@@ -167,7 +178,9 @@ function print_dat(path::String, ins::instanceGA)
 end
 
 """
-# Arguments:
+function read_modify_dat(path::String,factory::cpuGAinstanceFactory,seed=1,α=0.75,newJ=100)
+
+#Arguments:
   - `path`: the path to the file .dat containing the information about the instance that we want modify
   - `factory`: the instance factory, supports cpuGAinstanceFactory
   - `seed`: the random generation seed
@@ -199,7 +212,9 @@ function read_modify_dat(path::String, factory::cpuGAinstanceFactory, seed = 1, 
 end
 
 """
-# Arguments:
+function generate_GA(seed::Int,I::Int,J::Int)
+
+#Arguments:
 - `seed`: random generator seed.
 - `I`: number of items.
 - `J`: number of bins.
@@ -231,5 +246,38 @@ function generate_GA(seed::Int, I::Int, J::Int)
 	p = round.(p)
 	c = round.(c)
 
+	return cpuInstanceGA(I, J, p, w, c)
+end
+
+
+"""
+function generate_GA2(seed::Int,I::Int,J::Int)
+
+#Arguments:
+- `seed`: random generator seed.
+- `I`: number of items.
+- `J`: number of bins.
+
+return an instance with `I` items and `J` bins generating an instance as the `generate_GA` function.
+The main difference is that ... 
+"""
+function generate_GA2(seed::Int, I::Int, J::Int)
+	rng = MersenneTwister(seed)
+	d=Beta(0.5,0.5)
+
+	w = 1 .- 10 * log.(rand(rng,d, I, J))
+	p = w .* 1 / 1000 - 10 * rand(rng,d, I, J)
+
+	min_w,max_w=minimum(w),maximum(w)
+	min_p,max_p=minimum(p),maximum(p)
+
+	w=min_w .+ rand(rng,d, I, J).*(max_w-min_w)
+	p=min_p .+ rand(rng,d, I, J).*(max_p-min_p)
+
+	c = [max(0.8 / J * sum(w[:, j]), maximum(w[:, j])) for j in 1:J]
+	w = max.(1, round.(w))
+	p = max.(1, round.(-p .* 10))
+	c = ceil.(c)
+	
 	return cpuInstanceGA(I, J, p, w, c)
 end
