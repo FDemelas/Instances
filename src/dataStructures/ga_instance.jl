@@ -5,7 +5,12 @@ abstract type instanceGA <: abstractInstance end
 
 """
 Structure that describe an instance of the Generalized Assignment Problem.
+<<<<<<< HEAD
 #Fields:
+=======
+
+# Fields:
+>>>>>>> master
 - `I`: number of items
 - `J`: number of bins
 - `p`: profit matrix
@@ -31,9 +36,13 @@ Factory structure used to construct an instance of the Bin Packing Problem.
 struct cpuGAinstanceFactory <: GAinstanceFactory end
 
 """
+<<<<<<< HEAD
 function create_data_object(::cpuGAinstanceFactory, I, J, c, f, q, d)
 
 #Arguments:
+=======
+# Arguments:
+>>>>>>> master
 - `_`: factory of type cpuGAinstanceFactory
 - `I`: number of items
 - `J`: number of bins
@@ -46,8 +55,11 @@ Given the data, creates an instance of the Bin Packing Problem.
 create_data_object(::cpuGAinstanceFactory, I, J, p, w, c) = cpuInstanceGA(I, J, p, w, c)
 
 """
+<<<<<<< HEAD
 function lengthLM(ins::instanceGA)
 	
+=======
+>>>>>>> master
 # Arguments:
 - `ins`: instance object, should be a sub-type of instanceGA
 
@@ -58,8 +70,11 @@ function lengthLM(ins::instanceGA)
 end
 
 """
+<<<<<<< HEAD
 function sizeLM(ins::instanceGA)
 	
+=======
+>>>>>>> master
 # Arguments:
 - `ins`: instance object, should be a sub-type of instanceGA
 
@@ -70,9 +85,13 @@ function sizeLM(ins::instanceGA)
 end
 
 """
+<<<<<<< HEAD
 function read_dat(path::String, _::cpuGAinstanceFactory)
 
 #Arguments:
+=======
+# Arguments:
+>>>>>>> master
 -`path`: a String that contains the path to the data file of the instance
 -`_`: a cpuGAinstanceFactory used only to construct an instance of the proper type ( . <: instanceGA)
 
@@ -121,8 +140,11 @@ function read_dat(path::String, _::cpuGAinstanceFactory)
 
 	c = zeros(Int64, J)
 
+<<<<<<< HEAD
 #	line = split(readline(f), sep; keepempty = false)
 #	readed = length(line)
+=======
+>>>>>>> master
 	idx=1
     while idx <= J
 		idxL=1
@@ -142,9 +164,13 @@ function read_dat(path::String, _::cpuGAinstanceFactory)
 end
 
 """
+<<<<<<< HEAD
 function print_dat(path::String, ins::instanceGA)
 
 	# Arguments:
+=======
+# Arguments:
+>>>>>>> master
 		- `path`: the path to the file where we want print the data
 		- `ins`: the instance object that we want print in a file, should be a <: instanceGA
 
@@ -178,9 +204,13 @@ function print_dat(path::String, ins::instanceGA)
 end
 
 """
+<<<<<<< HEAD
 function read_modify_dat(path::String,factory::cpuGAinstanceFactory,seed=1,α=0.75,newJ=100)
 
 #Arguments:
+=======
+# Arguments:
+>>>>>>> master
   - `path`: the path to the file .dat containing the information about the instance that we want modify
   - `factory`: the instance factory, supports cpuGAinstanceFactory
   - `seed`: the random generation seed
@@ -212,9 +242,13 @@ function read_modify_dat(path::String, factory::cpuGAinstanceFactory, seed = 1, 
 end
 
 """
+<<<<<<< HEAD
 function generate_GA(seed::Int,I::Int,J::Int)
 
 #Arguments:
+=======
+# Arguments:
+>>>>>>> master
 - `seed`: random generator seed.
 - `I`: number of items.
 - `J`: number of bins.
@@ -248,6 +282,7 @@ function generate_GA(seed::Int, I::Int, J::Int)
 
 	return cpuInstanceGA(I, J, p, w, c)
 end
+<<<<<<< HEAD
 
 
 """
@@ -281,3 +316,5 @@ function generate_GA2(seed::Int, I::Int, J::Int)
 	
 	return cpuInstanceGA(I, J, p, w, c)
 end
+=======
+>>>>>>> master

@@ -1,6 +1,9 @@
 """
+<<<<<<< HEAD
 CR(ins)
 
+=======
+>>>>>>> master
 # Arguments:
 - `ins`: an instance structure.
 

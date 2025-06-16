@@ -1,4 +1,5 @@
 """
+<<<<<<< HEAD
 # Arguments:
 
 - `ins`: gpuMCNDinstance of the problem
@@ -7,6 +8,12 @@
 Compute LR using the GPU.
 regY is the regularization vector for y and α a multiplicative parameter.
 It does not requires the solution vector x,y as input and it return them as output.
+=======
+- `ins`: a gpuMCNDinstance to encode the problem
+- `z`: a Lagrangian multipliers Vector
+
+Compute LR using the GPU.
+>>>>>>> master
 """
 function LR(ins::gpuMCNDinstance, z)
 

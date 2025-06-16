@@ -1,7 +1,11 @@
 """
+<<<<<<< HEAD
 function solve_knapsack_continuous(n, c, w, C, x)
 
 	#Arguments:
+=======
+# Arguments:
+>>>>>>> master
 		- `n`: the number of objects 
 		- `c`: the costs vector of the objects
 		- `w`: the weights vector of the objects
@@ -45,9 +49,13 @@ function solve_knapsack_continuous(n, c, w, C, x)
 end
 
 """
+<<<<<<< HEAD
 function solve_knapsack(n, c, w, C, x)
 
 	#Arguments:
+=======
+# Arguments:
+>>>>>>> master
 		- `n`: the number of objects 
 		- `c`: the costs vector of the objects
 		- `w`: the weights vector of the objects

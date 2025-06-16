@@ -1,6 +1,9 @@
 """
+<<<<<<< HEAD
 CR(ins::cpuInstanceGA)
 
+=======
+>>>>>>> master
 # Arguments:
 - `ins`: a GA instance structure.
 

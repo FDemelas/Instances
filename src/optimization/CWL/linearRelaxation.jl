@@ -1,8 +1,11 @@
 
 
 """
+<<<<<<< HEAD
 CR(ins::cpuInstanceCWL)
 
+=======
+>>>>>>> master
 # Arguments:
 - `ins`: a CWL instance structure.
 
